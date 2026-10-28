@@ -1,452 +1,100 @@
-<!DOCTYPE html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
-		<title>Quarto de Blaise Pascal - WebXR Meta Quest 3</title>
-		<style>
-html, body, #canvas {
-	margin: 0;
-	padding: 0;
-	border: 0;
-}
-
-body {
-	color: white;
-	background-color: black;
-	overflow: hidden;
-	touch-action: none;
-}
-
-#canvas {
-	display: block;
-}
-
-#canvas:focus {
-	outline: none;
-}
-
-#status, #status-splash, #status-progress {
-	position: absolute;
-	left: 0;
-	right: 0;
-}
-
-#status, #status-splash {
-	top: 0;
-	bottom: 0;
-}
-
-#status {
-	background-color: #242424;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	visibility: hidden;
-}
-
-#status-splash {
-	max-height: 100%;
-	max-width: 100%;
-	margin: auto;
-}
-
-#status-splash.show-image--false {
-	display: none;
-}
-
-#status-splash.fullsize--true {
-	height: 100%;
-	width: 100%;
-	object-fit: contain;
-}
-
-#status-splash.use-filter--false {
-	image-rendering: pixelated;
-}
-
-#status-progress, #status-notice {
-	display: none;
-}
-
-#status-progress {
-	bottom: 10%;
-	width: 50%;
-	margin: 0 auto;
-}
-
-#status-notice {
-	background-color: #5b3943;
-	border-radius: 0.5rem;
-	border: 1px solid #9b3943;
-	color: #e0e0e0;
-	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
-	line-height: 1.3;
-	margin: 0 2rem;
-	overflow: hidden;
-	padding: 1rem;
-	text-align: center;
-	z-index: 1;
-}
-
-#pascal-webxr-debug {
-	position: fixed;
-	left: 12px;
-	bottom: 12px;
-	width: min(520px, calc(100vw - 24px));
-	max-height: 45vh;
-	overflow: hidden;
-	box-sizing: border-box;
-	padding: 12px;
-	background: rgba(12, 15, 20, 0.94);
-	border: 1px solid #8f9aa7;
-	border-radius: 10px;
-	color: #f2f3f4;
-	font: 13px/1.35 ui-monospace, SFMono-Regular, Consolas, monospace;
-	z-index: 2147483647;
-	pointer-events: auto;
-}
-#pascal-webxr-debug header {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin-bottom: 8px;
-	font: bold 14px/1.2 Arial, sans-serif;
-}
-#pascal-webxr-debug header button {
-	margin-left: auto;
-	color: #fff;
-	background: #414c59;
-	border: 1px solid #7d8998;
-	border-radius: 5px;
-	padding: 5px 8px;
-}
-#pascal-webxr-debug pre {
-	max-height: calc(45vh - 60px);
-	overflow: auto;
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
-	margin: 0;
-}
-		</style>
-		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
-<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
-	</head>
-	<body>
-		<canvas id="canvas">
-			Your browser does not support the canvas tag.
-		</canvas>
-
-		<noscript>
-			Your browser does not support JavaScript.
-		</noscript>
-
-		<div id="status">
-			<img id="status-splash" class="show-image--true fullsize--true use-filter--true" src="index.png" alt="">
-			<progress id="status-progress"></progress>
-			<div id="status-notice"></div>
-		</div>
-
-		<script src="index.js"></script>
-		<script>
-/*
- * WebXR compatibility fallback for browsers that reject "local-floor" as a
- * required session feature. Keep the call synchronous with the user's click.
- * If the session starts but local-floor reference space is unavailable, try
- * "local" as a fallback. Diagnostics are optional (?debug_webxr=1).
- */
-(function installPascalWebXRCompatibility() {
-	const xr = navigator.xr;
-	if (!xr || typeof xr.requestSession !== 'function' || xr.__pascalFeatureFallbackInstalled) {
-		return;
-	}
-
-	const nativeRequestSession = xr.requestSession;
-	const log = (message) => window.__pascalWebXRDiagnostics?.log(message);
-
-	const wrappedRequestSession = function(mode, options) {
-		let adjustedOptions = options;
-		if (mode === 'immersive-vr' && options && typeof options === 'object') {
-			const required = Array.isArray(options.requiredFeatures) ? options.requiredFeatures : [];
-			const optional = Array.isArray(options.optionalFeatures) ? options.optionalFeatures : [];
-			if (required.includes('local-floor')) {
-				adjustedOptions = Object.assign({}, options, {
-					requiredFeatures: required.filter((feature) => feature !== 'local-floor'),
-					optionalFeatures: Array.from(new Set([...optional, 'local-floor']))
-				});
-				log('Compatibilidade: local-floor passou de obrigatório para opcional; tentando permitir fallback.');
-			}
-		}
-
-		let request;
-		try {
-			// Do not await before calling the browser API: this must remain inside
-			// the transient user-activation window caused by the Enter VR click.
-			request = nativeRequestSession.call(this, mode, adjustedOptions);
-		} catch (error) {
-			log('requestSession lançou erro síncrono: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
-			throw error;
-		}
-
-		return Promise.resolve(request).then((session) => {
-			log('Sessão XR iniciada: ' + session.mode);
-
-			if (mode === 'immersive-vr' &&
-				typeof session.requestReferenceSpace === 'function' &&
-				!session.__pascalReferenceFallbackInstalled) {
-				const nativeRequestReferenceSpace = session.requestReferenceSpace.bind(session);
-				const requestSpaceWithFallback = function(referenceSpaceType) {
-					return Promise.resolve(nativeRequestReferenceSpace(referenceSpaceType)).catch((error) => {
-						if (referenceSpaceType === 'local-floor' && error?.name === 'NotSupportedError') {
-							log('local-floor indisponível; tentando reference space "local".');
-							return nativeRequestReferenceSpace('local');
-						}
-						throw error;
-					});
-				};
-
-				try {
-					Object.defineProperty(session, 'requestReferenceSpace', {
-						configurable: true,
-						writable: true,
-						value: requestSpaceWithFallback
-					});
-					Object.defineProperty(session, '__pascalReferenceFallbackInstalled', {
-						configurable: false,
-						enumerable: false,
-						value: true
-					});
-					log('Fallback de reference space instalado.');
-				} catch (error) {
-					log('Aviso: não foi possível instalar fallback de reference space: ' + (error?.message || String(error)));
-				}
-			}
-			session.addEventListener('end', () => log('Sessão XR encerrada.'));
-			session.addEventListener('visibilitychange', () => log('Visibilidade XR: ' + session.visibilityState));
-			return session;
-		}, (error) => {
-			log('requestSession rejeitado: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
-			throw error;
-		});
-	};
-
-	try {
-		Object.defineProperty(xr, 'requestSession', {
-			configurable: true,
-			writable: true,
-			value: wrappedRequestSession
-		});
-		Object.defineProperty(xr, '__pascalFeatureFallbackInstalled', {
-			configurable: false,
-			enumerable: false,
-			value: true
-		});
-	} catch (error) {
-		log('Não foi possível instalar fallback WebXR: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
-	}
-}());
-
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":7745512,"index.wasm":37902138},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
-const GODOT_THREADS_ENABLED = false;
-const engine = new Engine(GODOT_CONFIG);
-
-// Optional browser-side WebXR diagnostics. Enable with ?debug_webxr=1.
-// This does not alter the game scene or force VR; it only records API/session events.
-(function installPascalWebXRDiagnostics() {
-	const enabled = new URLSearchParams(window.location.search).get('debug_webxr') === '1';
-	if (!enabled) return;
-
-	const panel = document.createElement('section');
-	panel.id = 'pascal-webxr-debug';
-	panel.innerHTML = '<header><span>Pascal WebXR — diagnóstico</span><button type="button" data-action="copy">Copiar</button><button type="button" data-action="clear">Limpar</button></header><pre aria-live="polite"></pre>';
-	document.body.appendChild(panel);
-	const output = panel.querySelector('pre');
-	const entries = [];
-	const stamp = () => new Date().toLocaleTimeString();
-	const log = (message) => {
-		entries.push('[' + stamp() + '] ' + String(message));
-		while (entries.length > 80) entries.shift();
-		output.textContent = entries.join('\n');
-		output.scrollTop = output.scrollHeight;
-		console.info('[Pascal WebXR]', message);
-	};
-	window.__pascalWebXRDiagnostics = { log, entries };
-	panel.querySelector('[data-action="clear"]').addEventListener('click', () => {
-		entries.length = 0;
-		output.textContent = '';
-		log('Log limpo pelo usuário.');
-	});
-	panel.querySelector('[data-action="copy"]').addEventListener('click', async () => {
-		try {
-			await navigator.clipboard.writeText(entries.join('\n'));
-			log('Diagnóstico copiado para a área de transferência.');
-		} catch (error) {
-			log('Não foi possível copiar automaticamente: ' + (error?.message || error));
-		}
-	});
-
-	log('Página carregada: ' + location.href);
-	log('Contexto seguro HTTPS: ' + window.isSecureContext);
-	log('navigator.xr disponível: ' + Boolean(navigator.xr));
-	log('User-Agent: ' + navigator.userAgent);
-
-	window.addEventListener('error', (event) => {
-		log('Erro JavaScript: ' + (event.message || 'erro sem mensagem') + ' — ' + (event.filename || '') + ':' + (event.lineno || ''));
-	});
-	window.addEventListener('unhandledrejection', (event) => {
-		const reason = event.reason;
-		log('Promise rejeitada: ' + (reason?.name || '') + ' ' + (reason?.message || String(reason)));
-	});
-
-	if (!navigator.xr) {
-		log('WebXR não está disponível neste navegador/contexto.');
-		return;
-	}
-
-	if (typeof navigator.xr.isSessionSupported === 'function') {
-		navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
-			log('immersive-vr suportado: ' + supported);
-		}).catch((error) => {
-			log('isSessionSupported falhou: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
-		});
-	} else {
-		log('navigator.xr.isSessionSupported não existe.');
-	}
-
-	// Wrap requestSession only for diagnostics; preserve the original promise and errors.
-	try {
-		const xr = navigator.xr;
-		const original = xr.requestSession;
-		if (typeof original !== 'function') {
-			log('navigator.xr.requestSession não existe.');
-			return;
-		}
-		const wrapped = function(mode, options) {
-			log('requestSession chamado. mode=' + mode + '; options=' + JSON.stringify(options || {}));
-			let result;
-			try {
-				result = original.call(this, mode, options);
-			} catch (error) {
-				log('requestSession lançou erro síncrono: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
-				throw error;
-			}
-			return Promise.resolve(result).then((session) => {
-				log('Sessão XR iniciada: mode=' + session.mode);
-				session.addEventListener('end', () => log('Sessão XR encerrada.'));
-				session.addEventListener('visibilitychange', () => log('Visibilidade XR: ' + session.visibilityState));
-				return session;
-			}, (error) => {
-				log('requestSession rejeitado: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
-				throw error;
-			});
-		};
-		Object.defineProperty(xr, 'requestSession', { configurable: true, writable: true, value: wrapped });
-		log(xr.requestSession === wrapped ? 'Monitor de requestSession instalado.' : 'Não foi possível confirmar o monitor de requestSession.');
-	} catch (error) {
-		log('Não foi possível instrumentar requestSession: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
-	}
-}());
-
-(function () {
-	const statusOverlay = document.getElementById('status');
-	const statusProgress = document.getElementById('status-progress');
-	const statusNotice = document.getElementById('status-notice');
-
-	let initializing = true;
-	let statusMode = '';
-
-	function setStatusMode(mode) {
-		if (statusMode === mode || !initializing) {
-			return;
-		}
-		if (mode === 'hidden') {
-			statusOverlay.remove();
-			initializing = false;
-			window.__pascalWebXRDiagnostics?.log('Godot iniciou e ocultou o painel de carregamento.');
-			return;
-		}
-		statusOverlay.style.visibility = 'visible';
-		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
-		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
-		statusMode = mode;
-	}
-
-	function setStatusNotice(text) {
-		while (statusNotice.lastChild) {
-			statusNotice.removeChild(statusNotice.lastChild);
-		}
-		const lines = text.split('\n');
-		lines.forEach((line) => {
-			statusNotice.appendChild(document.createTextNode(line));
-			statusNotice.appendChild(document.createElement('br'));
-		});
-	}
-
-	function displayFailureNotice(err) {
-		console.error(err);
-		window.__pascalWebXRDiagnostics?.log('Falha ao iniciar o Godot: ' + (err?.message || String(err)));
-		if (err instanceof Error) {
-			setStatusNotice(err.message);
-		} else if (typeof err === 'string') {
-			setStatusNotice(err);
-		} else {
-			setStatusNotice('An unknown error occurred.');
-		}
-		setStatusMode('notice');
-		initializing = false;
-	}
-
-	const missing = Engine.getMissingFeatures({
-		threads: GODOT_THREADS_ENABLED,
-	});
-
-	if (missing.length !== 0) {
-		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
-			let serviceWorkerRegistrationPromise;
-			try {
-				serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration();
-			} catch (err) {
-				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
-			}
-			Promise.race([
-				serviceWorkerRegistrationPromise.then((registration) => {
-					if (registration != null) {
-						return Promise.reject(new Error('Service worker already exists.'));
-					}
-					return registration;
-				}).then(() => engine.installServiceWorker()),
-				new Promise((resolve) => {
-					setTimeout(() => resolve(), 2000);
-				}),
-			]).then(() => {
-				window.location.reload();
-			}).catch((err) => {
-				console.error('Error while registering service worker:', err);
-				window.__pascalWebXRDiagnostics?.log('Falha no service worker: ' + (err?.message || String(err)));
-			});
-		} else {
-			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
-			displayFailureNotice(missingMsg + missing.join('\n'));
-		}
-	} else {
-		setStatusMode('progress');
-		engine.startGame({
-			'onProgress': function (current, total) {
-				if (current > 0 && total > 0) {
-					statusProgress.value = current;
-					statusProgress.max = total;
-				} else {
-					statusProgress.removeAttribute('value');
-					statusProgress.removeAttribute('max');
-				}
-			},
-		}).then(() => {
-			window.__pascalWebXRDiagnostics?.log('engine.startGame terminou sem erro.');
-			setStatusMode('hidden');
-		}, displayFailureNotice);
-	}
-}());
-		</script>
-	</body>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>O Gabinete de Blaise Pascal — VR</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#17110d;color:#f4e5ca;font-family:Georgia,serif}
+#view{display:block;width:100%;height:100%;touch-action:none}
+#panel{position:fixed;left:18px;top:18px;max-width:min(370px,calc(100vw - 36px));padding:18px 20px;background:rgba(30,19,12,.88);border:1px solid #a77b46;border-radius:10px;box-shadow:0 8px 35px #0008;backdrop-filter:blur(8px)}
+h1{font-size:21px;line-height:1.2;margin:0 0 9px;color:#e5c28b}p{font-size:14px;line-height:1.45;margin:0 0 13px;color:#eadcc7}
+button{font: bold 15px Georgia,serif;color:#21170e;background:#d6b477;border:0;border-radius:6px;padding:13px 16px;cursor:pointer;margin:4px 6px 4px 0}
+button.secondary{background:#60452f;color:#fff0d8;border:1px solid #b58b56}
+#status{font:12px system-ui,sans-serif;color:#dfc7a1;margin-top:9px;min-height:16px}
+#help{position:fixed;right:15px;bottom:15px;background:#1e130cbf;border:1px solid #80613b;border-radius:8px;padding:10px 12px;font:12px system-ui,sans-serif;color:#f1dfc2;max-width:270px}
+@media(max-width:600px){#panel{left:10px;top:10px;padding:13px;max-width:calc(100vw - 46px)}h1{font-size:18px}#help{right:8px;bottom:8px;max-width:220px}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js"}}
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<section id="panel">
+<h1>Le Cabinet de Blaise Pascal</h1>
+<p>Um gabinete de estudos francês do século XVII. Explore a madeira antiga, os manuscritos, os livros e a galeria superior.</p>
+<button id="enter">Entrar em VR</button><button id="recenter" class="secondary">Recentrar</button>
+<div id="status">Carregando o ambiente…</div>
+</section>
+<div id="help">Computador: WASD para andar, mouse para olhar. No Quest 3, toque em “Entrar em VR”.</div>
+<script type="module">
+import * as THREE from 'three';
+const canvas=document.querySelector('#view'),status=document.querySelector('#status'),panel=document.querySelector('#panel');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;
+renderer.xr.enabled=true;
+const scene=new THREE.Scene();scene.background=new THREE.Color('#262a32');scene.fog=new THREE.FogExp2('#514332',.018);
+const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.08,100);
+const rig=new THREE.Group();rig.position.set(0,0,3.25);scene.add(rig);rig.add(camera);camera.position.set(0,1.65,0);
+const mat=(color,rough=.85,metal=0)=>new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});
+const plaster=mat('#b7a184'),oak=mat('#56341e'),darkOak=mat('#2b1a10'),floorMat=mat('#67472d'),stone=mat('#61564a'),gold=mat('#b58a45',.48,.32),paper=mat('#d8c49a'),red=mat('#69251f'),green=mat('#304634'),blue=mat('#293c50'),iron=mat('#242321',.48,.55),rug=mat('#702d25');
+function box(name,size,pos,material,parent=scene){const m=new THREE.Mesh(new THREE.BoxGeometry(...size),material);m.name=name;m.position.set(...pos);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+function cylinder(name,r,h,pos,material,segments=12){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,segments),material);m.name=name;m.position.set(...pos);m.castShadow=true;m.receiveShadow=true;scene.add(m);return m}
+scene.add(new THREE.HemisphereLight('#e6d4b5','#342216',1.25));
+const sun=new THREE.DirectionalLight('#ffd7a0',2.15);sun.position.set(-4,8,3);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-9;sun.shadow.camera.right=9;sun.shadow.camera.top=9;sun.shadow.camera.bottom=-9;scene.add(sun);
+const ambient=new THREE.PointLight('#ffb568',26,10,2);ambient.position.set(0,2.8,0);scene.add(ambient);
+box('Piso de tábuas',[12,.22,10],[0,-.11,0],floorMat);
+for(let i=1;i<17;i++)box('Junta do assoalho',[.018,.009,9.7],[-5.55+i*.69,.008,0],darkOak);
+box('Parede do fundo esquerda',[4,4,.25],[-4,2,-4.9],plaster);box('Parede do fundo direita',[4,4,.25],[4,2,-4.9],plaster);box('Parede superior fundo',[4,1.2,.25],[0,3.4,-4.9],plaster);
+box('Parede esquerda',[.25,4,10],[-5.9,2,0],plaster);box('Parede direita',[.25,4,10],[5.9,2,0],plaster);
+box('Parede frontal esquerda',[3.2,4,.25],[-4.4,2,4.9],plaster);box('Parede frontal direita',[3.2,4,.25],[4.4,2,4.9],plaster);box('Viga da entrada',[5.6,.55,.25],[0,3.72,4.9],plaster);
+for(const x of [-5.2,-2.6,0,2.6,5.2])box('Viga exposta',[.18,.22,9.7],[x,3.94,0],darkOak);
+for(const z of [-4.72,4.72])box('Rodapé',[11.4,.18,.12],[0,.13,z],darkOak);
+box('Galeria superior oeste',[4.2,.2,5.2],[-3.7,3.45,-1.7],floorMat);box('Galeria superior leste',[4.2,.2,5.2],[3.7,3.45,-1.7],floorMat);
+box('Travessa da galeria',[11,.22,.22],[0,3.53,1],darkOak);
+for(const x of [-1.5,-.75,0,.75,1.5])box('Balaústre',[.1,.9,.1],[x,4,.98],oak);
+box('Corrimão da galeria',[3.5,.14,.16],[0,4.48,.98],darkOak);
+for(let i=0;i<12;i++){const t=i/11;box('Degrau de carvalho',[1.55,.18,.48],[-1.65,.13+t*3.25,3.4-t*5.1],oak)}
+const rail1=box('Longarina esquerda',[.14,3.8,.22],[-2.42,1.8,.85],darkOak);rail1.rotation.x=-.576;
+const rail2=box('Longarina direita',[.14,3.8,.22],[-.88,1.8,.85],darkOak);rail2.rotation.x=-.576;
+box('Tapete persa',[4,.025,3],[.2,.018,.2],rug);box('Borda do tapete',[3.65,.012,2.65],[.2,.038,.2],gold);
+box('Tampo da escrivaninha',[2.4,.16,1.1],[.5,1.05,-.5],oak);
+for(const x of [-.48,1.48])for(const z of [-.9,-.1])box('Pé da escrivaninha',[.13,1,.13],[x,.52,z],darkOak);
+box('Avental da mesa',[2.15,.25,.12],[.5,.83,0],darkOak);
+const parchment=box('Manuscrito aberto',[.78,.025,.52],[.42,1.15,-.45],paper);parchment.rotation.y=-.16;
+box('Livro encadernado em vermelho',[.45,.11,.32],[1.18,1.19,-.55],red);box('Tinteiro',[.12,.09,.12],[-.25,1.19,-.35],iron);
+const quill=cylinder('Pena de escrever',.012,.42,[-.12,1.23,-.45],paper,6);quill.rotation.z=-.96;
+cylinder('Base de castiçal',.06,.06,[1.25,1.15,-.15],gold);cylinder('Castiçal de latão',.035,.22,[1.25,1.28,-.15],gold);cylinder('Vela de cera',.045,.24,[1.25,1.48,-.15],paper);
+const candleGlow=new THREE.PointLight('#ff9b42',5,3.2,2);candleGlow.position.set(1.25,1.62,-.15);scene.add(candleGlow);
+box('Assento da cadeira',[.72,.16,.68],[.5,.58,.75],oak);for(const x of [.22,.78])for(const z of [.48,1.02])box('Pé da cadeira',[.09,.56,.09],[x,.28,z],darkOak);box('Encosto da cadeira',[.72,.95,.12],[.5,1.05,1.04],oak);
+box('Moldura de pedra da lareira',[2.2,1.9,.48],[0,.98,-4.55],stone);box('Boca escura da lareira',[1.18,1.18,.12],[0,.78,-4.27],darkOak);box('Prateleira da lareira',[2.5,.16,.58],[0,1.95,-4.43],darkOak);box('Brasa',[.58,.24,.06],[0,.43,-4.19],mat('#c34f1d',.45));
+const fireGlow=new THREE.PointLight('#ff6c28',7,3.5,2);fireGlow.position.set(0,.8,-3.9);scene.add(fireGlow);
+function addStack(x,y,z,count){const colors=[red,green,blue];for(let i=0;i<count;i++){const b=box('Livro antigo empilhado',[.52-(i%2)*.04,.12,.36],[x,y+.06+i*.13,z],colors[i%3]);b.rotation.y=(i%2)*.08}}
+addStack(-1.8,.22,-3.7,3);addStack(3.5,4.15,-2.2,4);
+for(const side of [-1,1]){const x=side*5.55;box('Fundo da estante',[.22,3.1,3.1],[x,1.7,-1.3],darkOak);for(let level=0;level<5;level++){const y=.35+level*.68;box('Prateleira',[.62,.1,3.2],[x-side*.25,y,-1.3],oak);for(let b=0;b<10;b++){const z=-2.72+b*.31,h=.38+((b+level)%3)*.08,c=[red,green,blue,darkOak][(b+level)%4];box('Volume antigo',[.3,h,.2],[x-side*.27,y+.08+h*.5,z],c);box('Filete dourado',[.012,h*.7,.018],[x-side*.43,y+.08+h*.5,z],gold)}}}
+for(const side of [-1,1]){const x=side*5.72,z=-3;box('Caixilho superior',[.16,.14,1.65],[x,2.8,z],darkOak);box('Caixilho inferior',[.16,.14,1.65],[x,1.45,z],darkOak);box('Montante da janela',[.16,1.4,.14],[x,2.12,z-.78],darkOak);box('Montante da janela',[.16,1.4,.14],[x,2.12,z+.78],darkOak);box('Divisão de janela',[.12,1.3,.08],[x,2.12,z],oak);box('Travessa da janela',[.12,.08,1.45],[x,2.12,z],oak)}
+box('Tapeçaria antiga',[.08,1.75,1.45],[-5.7,2.3,1],mat('#7a3027'));box('Campo central da tapeçaria',[.04,1.35,1.05],[-5.64,2.3,1],mat('#9e7440'));
+box('Mesa de estudos superior',[1.8,.12,.9],[3.6,4.05,-2.2],oak);for(const x of [2.9,4.3])for(const z of [-2.5,-1.9])box('Pé da mesa superior',[.1,.75,.1],[x,3.65,z],darkOak);
+// Light-weight desk decorations and historical brass details.
+for(let i=0;i<3;i++){const seal=cylinder('Selo de cera',.055,.018,[.1+i*.13,1.17,-.65],red,16);seal.rotation.x=Math.PI/2}
+const clock= new THREE.Group();clock.position.set(0,2.55,-4.68);scene.add(clock);
+const clockFace=new THREE.Mesh(new THREE.CircleGeometry(.35,32),gold);clockFace.position.z=.02;clock.add(clockFace);
+const clockInner=new THREE.Mesh(new THREE.CircleGeometry(.29,32),mat('#d4bd8b'));clockInner.position.z=.035;clock.add(clockInner);
+for(let i=0;i<12;i++){const a=i*Math.PI/6;const tick=box('Marca do relógio',[.025,.08,.025],[Math.sin(a)*.22,Math.cos(a)*.22,0.06],darkOak,clock);tick.rotation.z=-a}
+status.textContent='Ambiente carregado. A entrada VR só acontece após tocar no botão.';
+let locked=false,keys={};const forward=new THREE.Vector3(),right=new THREE.Vector3();
+document.addEventListener('keydown',e=>{keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault()});
+document.addEventListener('keyup',e=>keys[e.code]=false);
+canvas.addEventListener('click',()=>{if(!renderer.xr.isPresenting&&document.pointerLockElement!==canvas)canvas.requestPointerLock?.()});
+document.addEventListener('mousemove',e=>{if(document.pointerLockElement===canvas&&!renderer.xr.isPresenting){rig.rotation.y-=e.movementX*.002;camera.rotation.x=Math.max(-1.2,Math.min(1.2,camera.rotation.x-e.movementY*.002))}});
+document.querySelector('#enter').addEventListener('click',async()=>{try{if(!navigator.xr){status.textContent='Este navegador não disponibiliza WebXR. Abra o link no navegador do Quest 3.';return}const supported=await navigator.xr.isSessionSupported('immersive-vr');if(!supported){status.textContent='O navegador não oferece sessão VR imersiva neste dispositivo.';return}status.textContent='Solicitando sessão VR…';const session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor','hand-tracking']});await renderer.xr.setSession(session);camera.position.set(0,0,0);panel.style.display='none';session.addEventListener('end',()=>{camera.position.set(0,1.65,0);panel.style.display='block';status.textContent='Sessão VR encerrada.'});status.textContent='VR ativa.'}catch(e){status.textContent='Não foi possível iniciar VR: '+(e?.message||e);console.error(e)}});
+document.querySelector('#recenter').addEventListener('click',()=>{rig.position.set(0,0,3.25);rig.rotation.set(0,0,0);camera.position.set(0,renderer.xr.isPresenting?0:1.65,0);camera.rotation.set(0,0,0);status.textContent='Posição reiniciada.'});
+function animate(){const dt=Math.min(renderer.info.render.frame?1/60:1/60,.033);if(!renderer.xr.isPresenting){const speed=.055;forward.set(-Math.sin(rig.rotation.y),0,-Math.cos(rig.rotation.y));right.set(Math.cos(rig.rotation.y),0,-Math.sin(rig.rotation.y));if(keys.KeyW||keys.ArrowUp)rig.position.addScaledVector(forward,speed);if(keys.KeyS||keys.ArrowDown)rig.position.addScaledVector(forward,-speed);if(keys.KeyA||keys.ArrowLeft)rig.position.addScaledVector(right,-speed);if(keys.KeyD||keys.ArrowRight)rig.position.addScaledVector(right,speed);rig.position.x=THREE.MathUtils.clamp(rig.position.x,-5,5);rig.position.z=THREE.MathUtils.clamp(rig.position.z,-4,4)}renderer.render(scene,camera)}
+renderer.setAnimationLoop(animate);
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body>
 </html>
