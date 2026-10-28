@@ -89,10 +89,49 @@ body {
 	text-align: center;
 	z-index: 1;
 }
+
+#pascal-webxr-debug {
+	position: fixed;
+	left: 12px;
+	bottom: 12px;
+	width: min(520px, calc(100vw - 24px));
+	max-height: 45vh;
+	overflow: hidden;
+	box-sizing: border-box;
+	padding: 12px;
+	background: rgba(12, 15, 20, 0.94);
+	border: 1px solid #8f9aa7;
+	border-radius: 10px;
+	color: #f2f3f4;
+	font: 13px/1.35 ui-monospace, SFMono-Regular, Consolas, monospace;
+	z-index: 2147483647;
+	pointer-events: auto;
+}
+#pascal-webxr-debug header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+	font: bold 14px/1.2 Arial, sans-serif;
+}
+#pascal-webxr-debug header button {
+	margin-left: auto;
+	color: #fff;
+	background: #414c59;
+	border: 1px solid #7d8998;
+	border-radius: 5px;
+	padding: 5px 8px;
+}
+#pascal-webxr-debug pre {
+	max-height: calc(45vh - 60px);
+	overflow: auto;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	margin: 0;
+}
 		</style>
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
-
 	</head>
 	<body>
 		<canvas id="canvas">
@@ -115,6 +154,103 @@ const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"e
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
+// Optional browser-side WebXR diagnostics. Enable with ?debug_webxr=1.
+// This does not alter the game scene or force VR; it only records API/session events.
+(function installPascalWebXRDiagnostics() {
+	const enabled = new URLSearchParams(window.location.search).get('debug_webxr') === '1';
+	if (!enabled) return;
+
+	const panel = document.createElement('section');
+	panel.id = 'pascal-webxr-debug';
+	panel.innerHTML = '<header><span>Pascal WebXR — diagnóstico</span><button type="button" data-action="copy">Copiar</button><button type="button" data-action="clear">Limpar</button></header><pre aria-live="polite"></pre>';
+	document.body.appendChild(panel);
+	const output = panel.querySelector('pre');
+	const entries = [];
+	const stamp = () => new Date().toLocaleTimeString();
+	const log = (message) => {
+		entries.push('[' + stamp() + '] ' + String(message));
+		while (entries.length > 80) entries.shift();
+		output.textContent = entries.join('\n');
+		output.scrollTop = output.scrollHeight;
+		console.info('[Pascal WebXR]', message);
+	};
+	window.__pascalWebXRDiagnostics = { log, entries };
+	panel.querySelector('[data-action="clear"]').addEventListener('click', () => {
+		entries.length = 0;
+		output.textContent = '';
+		log('Log limpo pelo usuário.');
+	});
+	panel.querySelector('[data-action="copy"]').addEventListener('click', async () => {
+		try {
+			await navigator.clipboard.writeText(entries.join('\n'));
+			log('Diagnóstico copiado para a área de transferência.');
+		} catch (error) {
+			log('Não foi possível copiar automaticamente: ' + (error?.message || error));
+		}
+	});
+
+	log('Página carregada: ' + location.href);
+	log('Contexto seguro HTTPS: ' + window.isSecureContext);
+	log('navigator.xr disponível: ' + Boolean(navigator.xr));
+	log('User-Agent: ' + navigator.userAgent);
+
+	window.addEventListener('error', (event) => {
+		log('Erro JavaScript: ' + (event.message || 'erro sem mensagem') + ' — ' + (event.filename || '') + ':' + (event.lineno || ''));
+	});
+	window.addEventListener('unhandledrejection', (event) => {
+		const reason = event.reason;
+		log('Promise rejeitada: ' + (reason?.name || '') + ' ' + (reason?.message || String(reason)));
+	});
+
+	if (!navigator.xr) {
+		log('WebXR não está disponível neste navegador/contexto.');
+		return;
+	}
+
+	if (typeof navigator.xr.isSessionSupported === 'function') {
+		navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+			log('immersive-vr suportado: ' + supported);
+		}).catch((error) => {
+			log('isSessionSupported falhou: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
+		});
+	} else {
+		log('navigator.xr.isSessionSupported não existe.');
+	}
+
+	// Wrap requestSession only for diagnostics; preserve the original promise and errors.
+	try {
+		const xr = navigator.xr;
+		const original = xr.requestSession;
+		if (typeof original !== 'function') {
+			log('navigator.xr.requestSession não existe.');
+			return;
+		}
+		const wrapped = function(mode, options) {
+			log('requestSession chamado. mode=' + mode + '; options=' + JSON.stringify(options || {}));
+			let result;
+			try {
+				result = original.call(this, mode, options);
+			} catch (error) {
+				log('requestSession lançou erro síncrono: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
+				throw error;
+			}
+			return Promise.resolve(result).then((session) => {
+				log('Sessão XR iniciada: mode=' + session.mode);
+				session.addEventListener('end', () => log('Sessão XR encerrada.'));
+				session.addEventListener('visibilitychange', () => log('Visibilidade XR: ' + session.visibilityState));
+				return session;
+			}, (error) => {
+				log('requestSession rejeitado: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
+				throw error;
+			});
+		};
+		Object.defineProperty(xr, 'requestSession', { configurable: true, writable: true, value: wrapped });
+		log(xr.requestSession === wrapped ? 'Monitor de requestSession instalado.' : 'Não foi possível confirmar o monitor de requestSession.');
+	} catch (error) {
+		log('Não foi possível instrumentar requestSession: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
+	}
+}());
+
 (function () {
 	const statusOverlay = document.getElementById('status');
 	const statusProgress = document.getElementById('status-progress');
@@ -130,6 +266,7 @@ const engine = new Engine(GODOT_CONFIG);
 		if (mode === 'hidden') {
 			statusOverlay.remove();
 			initializing = false;
+			window.__pascalWebXRDiagnostics?.log('Godot iniciou e ocultou o painel de carregamento.');
 			return;
 		}
 		statusOverlay.style.visibility = 'visible';
@@ -151,6 +288,7 @@ const engine = new Engine(GODOT_CONFIG);
 
 	function displayFailureNotice(err) {
 		console.error(err);
+		window.__pascalWebXRDiagnostics?.log('Falha ao iniciar o Godot: ' + (err?.message || String(err)));
 		if (err instanceof Error) {
 			setStatusNotice(err.message);
 		} else if (typeof err === 'string') {
@@ -174,7 +312,6 @@ const engine = new Engine(GODOT_CONFIG);
 			} catch (err) {
 				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
 			}
-			// There's a chance that installing the service worker would fix the issue
 			Promise.race([
 				serviceWorkerRegistrationPromise.then((registration) => {
 					if (registration != null) {
@@ -182,18 +319,16 @@ const engine = new Engine(GODOT_CONFIG);
 					}
 					return registration;
 				}).then(() => engine.installServiceWorker()),
-				// For some reason, `getRegistration()` can stall
 				new Promise((resolve) => {
 					setTimeout(() => resolve(), 2000);
 				}),
 			]).then(() => {
-				// Reload if there was no error.
 				window.location.reload();
 			}).catch((err) => {
 				console.error('Error while registering service worker:', err);
+				window.__pascalWebXRDiagnostics?.log('Falha no service worker: ' + (err?.message || String(err)));
 			});
 		} else {
-			// Display the message as usual
 			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
 			displayFailureNotice(missingMsg + missing.join('\n'));
 		}
@@ -210,6 +345,7 @@ const engine = new Engine(GODOT_CONFIG);
 				}
 			},
 		}).then(() => {
+			window.__pascalWebXRDiagnostics?.log('engine.startGame terminou sem erro.');
 			setStatusMode('hidden');
 		}, displayFailureNotice);
 	}
@@ -217,4 +353,3 @@ const engine = new Engine(GODOT_CONFIG);
 		</script>
 	</body>
 </html>
-
