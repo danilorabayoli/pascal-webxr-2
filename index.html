@@ -150,6 +150,103 @@ body {
 
 		<script src="index.js"></script>
 		<script>
+/*
+ * WebXR compatibility fallback for browsers that reject "local-floor" as a
+ * required session feature. Keep the call synchronous with the user's click.
+ * If the session starts but local-floor reference space is unavailable, try
+ * "local" as a fallback. Diagnostics are optional (?debug_webxr=1).
+ */
+(function installPascalWebXRCompatibility() {
+	const xr = navigator.xr;
+	if (!xr || typeof xr.requestSession !== 'function' || xr.__pascalFeatureFallbackInstalled) {
+		return;
+	}
+
+	const nativeRequestSession = xr.requestSession;
+	const log = (message) => window.__pascalWebXRDiagnostics?.log(message);
+
+	const wrappedRequestSession = function(mode, options) {
+		let adjustedOptions = options;
+		if (mode === 'immersive-vr' && options && typeof options === 'object') {
+			const required = Array.isArray(options.requiredFeatures) ? options.requiredFeatures : [];
+			const optional = Array.isArray(options.optionalFeatures) ? options.optionalFeatures : [];
+			if (required.includes('local-floor')) {
+				adjustedOptions = Object.assign({}, options, {
+					requiredFeatures: required.filter((feature) => feature !== 'local-floor'),
+					optionalFeatures: Array.from(new Set([...optional, 'local-floor']))
+				});
+				log('Compatibilidade: local-floor passou de obrigatório para opcional; tentando permitir fallback.');
+			}
+		}
+
+		let request;
+		try {
+			// Do not await before calling the browser API: this must remain inside
+			// the transient user-activation window caused by the Enter VR click.
+			request = nativeRequestSession.call(this, mode, adjustedOptions);
+		} catch (error) {
+			log('requestSession lançou erro síncrono: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
+			throw error;
+		}
+
+		return Promise.resolve(request).then((session) => {
+			log('Sessão XR iniciada: ' + session.mode);
+
+			if (mode === 'immersive-vr' &&
+				typeof session.requestReferenceSpace === 'function' &&
+				!session.__pascalReferenceFallbackInstalled) {
+				const nativeRequestReferenceSpace = session.requestReferenceSpace.bind(session);
+				const requestSpaceWithFallback = function(referenceSpaceType) {
+					return Promise.resolve(nativeRequestReferenceSpace(referenceSpaceType)).catch((error) => {
+						if (referenceSpaceType === 'local-floor' && error?.name === 'NotSupportedError') {
+							log('local-floor indisponível; tentando reference space "local".');
+							return nativeRequestReferenceSpace('local');
+						}
+						throw error;
+					});
+				};
+
+				try {
+					Object.defineProperty(session, 'requestReferenceSpace', {
+						configurable: true,
+						writable: true,
+						value: requestSpaceWithFallback
+					});
+					Object.defineProperty(session, '__pascalReferenceFallbackInstalled', {
+						configurable: false,
+						enumerable: false,
+						value: true
+					});
+					log('Fallback de reference space instalado.');
+				} catch (error) {
+					log('Aviso: não foi possível instalar fallback de reference space: ' + (error?.message || String(error)));
+				}
+			}
+			session.addEventListener('end', () => log('Sessão XR encerrada.'));
+			session.addEventListener('visibilitychange', () => log('Visibilidade XR: ' + session.visibilityState));
+			return session;
+		}, (error) => {
+			log('requestSession rejeitado: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
+			throw error;
+		});
+	};
+
+	try {
+		Object.defineProperty(xr, 'requestSession', {
+			configurable: true,
+			writable: true,
+			value: wrappedRequestSession
+		});
+		Object.defineProperty(xr, '__pascalFeatureFallbackInstalled', {
+			configurable: false,
+			enumerable: false,
+			value: true
+		});
+	} catch (error) {
+		log('Não foi possível instalar fallback WebXR: ' + (error?.name || '') + ' ' + (error?.message || String(error)));
+	}
+}());
+
 const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":7745512,"index.wasm":37902138},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
