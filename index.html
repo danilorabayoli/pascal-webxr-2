@@ -307,7 +307,16 @@ let soundEngine=null,stepMeter=0;
 function enableSounds(){
   if(!soundEngine){
     const AudioEngine=window.AudioContext||window.webkitAudioContext;
-    if(AudioEngine)soundEngine=new AudioEngine();
+    if(AudioEngine){
+      soundEngine=new AudioEngine();
+      const noiseBuffer=soundEngine.createBuffer(1,soundEngine.sampleRate,soundEngine.sampleRate);
+      const channel=noiseBuffer.getChannelData(0);
+      for(let i=0;i<channel.length;i++)channel[i]=(Math.random()*2-1)*.4;
+      const fire=soundEngine.createBufferSource();fire.buffer=noiseBuffer;fire.loop=true;
+      const filter=soundEngine.createBiquadFilter();filter.type='bandpass';filter.frequency.value=1250;filter.Q.value=.8;
+      const level=soundEngine.createGain();level.gain.value=.008;
+      fire.connect(filter);filter.connect(level);level.connect(soundEngine.destination);fire.start();
+    }
   }
   if(soundEngine&&soundEngine.state==='suspended')soundEngine.resume();
 }
