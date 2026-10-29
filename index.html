@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Quarto de Blaise Pascal — WebXR</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090b10;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#f4ead7}canvas{display:block;width:100%;height:100%;touch-action:none}#panel{position:fixed;left:16px;top:14px;z-index:5;width:min(420px,calc(100vw - 32px));padding:15px 16px;border:1px solid #76552b;border-radius:12px;background:rgba(12,12,15,.88);box-shadow:0 7px 30px #0008;backdrop-filter:blur(8px)}h1{font-size:18px;line-height:1.15;margin:0 0 8px;color:#f2d5a0}#status{font-size:13px;line-height:1.4;color:#d8ccb7;margin:0 0 10px}#controls{font-size:12px;line-height:1.5;color:#c4b59d;margin:8px 0 12px}button{font:600 14px system-ui;cursor:pointer;border:1px solid #9c713a;border-radius:9px;background:#8a5a23;color:white;padding:10px 14px}button:hover{background:#a46e2f}button:disabled{opacity:.5;cursor:default}.secondary{background:#252329;border-color:#6b5c4a}#buttons{display:flex;gap:8px;flex-wrap:wrap}#crosshair{position:fixed;left:50%;top:50%;width:12px;height:12px;transform:translate(-50%,-50%);pointer-events:none;z-index:3;border:1px solid #f2d5a0;border-radius:50%;box-shadow:0 0 4px #000}#desktopDialog{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);width:min(620px,calc(100vw - 30px));background:rgba(15,13,12,.94);border:1px solid #9c713a;border-radius:14px;padding:18px 20px;z-index:8;box-shadow:0 10px 35px #000a}#desktopDialog.hidden{display:none}#dialogTitle{font-size:16px;color:#f2d5a0;font-weight:700;margin-bottom:7px}#dialogBody{font-size:14px;line-height:1.6;white-space:pre-line;margin-bottom:14px}#dialogButtons{display:flex;justify-content:flex-end;gap:10px}#loading{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#090b10;color:#f2d5a0;font-size:16px}#loading.hidden{display:none}#error{color:#ffb1a8}#badge{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#ba9862;margin-bottom:5px} @media(max-width:560px){#panel{left:8px;top:8px;width:calc(100vw - 16px);padding:12px}h1{font-size:16px}#controls{font-size:11px}}
+:root{color-scheme:dark}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090b10;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#f4ead7}canvas{display:block;width:100%;height:100%;touch-action:none}#panel{position:fixed;left:16px;top:14px;z-index:5;width:min(420px,calc(100vw - 32px));padding:15px 16px;border:1px solid #76552b;border-radius:12px;background:rgba(12,12,15,.88);box-shadow:0 7px 30px #0008;backdrop-filter:blur(8px)}h1{font-size:18px;line-height:1.15;margin:0 0 8px;color:#f2d5a0}#status{font-size:13px;line-height:1.4;color:#d8ccb7;margin:0 0 10px}#controls{font-size:12px;line-height:1.5;color:#c4b59d;margin:8px 0 12px}button{font:600 14px system-ui;cursor:pointer;border:1px solid #9c713a;border-radius:9px;background:#8a5a23;color:white;padding:10px 14px}button:hover{background:#a46e2f}button:disabled{opacity:.5;cursor:default}.secondary{background:#252329;border-color:#6b5c4a}#buttons{display:flex;gap:8px;flex-wrap:wrap}#crosshair{position:fixed;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%);pointer-events:none;z-index:3;border:1px solid #f2d5a0;border-radius:50%;box-shadow:0 0 4px #000}#crosshair:after{content:'';position:absolute;left:50%;top:50%;width:3px;height:3px;transform:translate(-50%,-50%);border-radius:50%;background:#f2d5a0}#desktopDialog{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);width:min(620px,calc(100vw - 30px));background:rgba(15,13,12,.94);border:1px solid #9c713a;border-radius:14px;padding:18px 20px;z-index:8;box-shadow:0 10px 35px #000a}#desktopDialog.hidden{display:none}#dialogTitle{font-size:16px;color:#f2d5a0;font-weight:700;margin-bottom:7px}#dialogBody{font-size:14px;line-height:1.6;white-space:pre-line;margin-bottom:14px}#dialogButtons{display:flex;justify-content:flex-end;gap:10px}#loading{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#090b10;color:#f2d5a0;font-size:16px}#loading.hidden{display:none}#error{color:#ffb1a8}#badge{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#ba9862;margin-bottom:5px} @media(max-width:560px){#panel{left:8px;top:8px;width:calc(100vw - 16px);padding:12px}h1{font-size:16px}#controls{font-size:11px}}
 </style>
 </head>
 <body>
@@ -14,7 +14,7 @@
   <div id="badge">Ambiente histórico · século XVII</div>
   <h1>Quarto de Blaise Pascal</h1>
   <p id="status">Preparando o modelo 3D original…</p>
-  <div id="controls"><b>PC:</b> clique na cena para capturar o mouse; WASD anda, mouse olha, Esc libera.<br><b>Meta Quest:</b> analógico esquerdo anda, direito gira em passos de 30°; aponte com o controle direito e aperte o gatilho para conversar.</div>
+  <div id="controls"><b>PC:</b> clique na cena para capturar o mouse; WASD anda, mouse olha, Esc libera.<br><b>Meta Quest:</b> analógico esquerdo anda, direito gira em passos de 30°; mire pelo ponto dourado e aperte o gatilho direito para conversar.</div>
   <div id="buttons"><button id="enterVR" disabled>Entrar em VR</button><button id="resetView" class="secondary">Reiniciar posição</button></div>
 </div>
 <div id="crosshair"></div>
@@ -65,6 +65,7 @@ const fillLight=new THREE.DirectionalLight(0x7c98d8,0.45);fillLight.position.set
 for(const [x,y,z,color,intensity,range] of [[0,2.9,-1.5,0xffc37b,1.0,6],[-3.4,2.4,0.2,0xffbf71,.52,4],[3.8,2.5,-2.1,0xffc37b,.48,4],[0,5.4,0,0xffc37b,.38,7]]){const l=new THREE.PointLight(color,intensity,range,2);l.position.set(x,y,z);scene.add(l)}
 
 let room=null;
+let pascalCharacter=null;
 let loaded=false;
 let pointerLocked=false;
 let pitch=0;
@@ -93,9 +94,13 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
     if(obj.material){const mats=Array.isArray(obj.material)?obj.material:[obj.material];for(const mat of mats){mat.side=THREE.DoubleSide;if(mat.roughness!==undefined)mat.roughness=Math.max(mat.roughness,.58);}}}
   });
   scene.add(room);
+  room.updateMatrixWorld(true);
+  alignHistoricWindows(room);
   addPascalCharacter();
   addInteractionTargets();
   addPanorama();
+  addWindowLandscape(room);
+  addSecondFloorFurniture();
   loaded=true;
   enterVRButton.disabled=false;
   statusEl.textContent='Modelo original carregado. Caminhe pelo quarto e explore a galeria do segundo andar.';
@@ -108,10 +113,83 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
 
 function addPanorama(){
   new THREE.TextureLoader().load('./assets/paris_1650_panorama_cubo.jpg',texture=>{
-    texture.colorSpace=THREE.SRGBColorSpace;
-    texture.mapping=THREE.EquirectangularReflectionMapping;
-    scene.background=texture;
+    texture.colorSpace=THREE.SRGBColorSpace;texture.mapping=THREE.EquirectangularReflectionMapping;scene.background=texture;
   },undefined,err=>console.warn('Panorama não carregado; usando fundo simples.',err));
+}
+function alignHistoricWindows(roomRoot){
+  roomRoot.traverse(obj=>{
+    if(obj.name==='Fundo frio exterior da janela')obj.visible=false;
+    if(obj.name==='Segundo andar - vidros azulados da janela'&&obj.material){
+      const orig=Array.isArray(obj.material)?obj.material:[obj.material];
+      const translucent=orig.map(old=>{const m=old.clone();m.transparent=true;m.opacity=.24;m.depthWrite=false;if(m.roughness!==undefined)m.roughness=.22;m.side=THREE.DoubleSide;m.needsUpdate=true;return m;});
+      obj.material=Array.isArray(obj.material)?translucent:translucent[0];obj.renderOrder=4;
+    }
+  });
+}
+function makeParisWindowTexture(){
+  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=512;const ctx=canvas.getContext('2d');
+  const sky=ctx.createLinearGradient(0,0,0,512);sky.addColorStop(0,'#374e68');sky.addColorStop(.42,'#8295a2');sky.addColorStop(.72,'#d5bc91');sky.addColorStop(1,'#b5a078');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,1024,512);
+  const sun=ctx.createRadialGradient(740,150,5,740,150,170);sun.addColorStop(0,'rgba(255,230,177,.65)');sun.addColorStop(1,'rgba(255,230,177,0)');ctx.fillStyle=sun;ctx.fillRect(520,0,360,330);
+  ctx.fillStyle='rgba(245,232,204,.22)';
+  for(let i=0;i<7;i++){ctx.beginPath();ctx.ellipse(95+i*145,92+(i%3)*31,75+(i%2)*32,14+(i%3)*5,-.08,0,Math.PI*2);ctx.fill();}
+  ctx.fillStyle='#697c70';ctx.beginPath();ctx.moveTo(0,310);for(let x=0;x<=1024;x+=64)ctx.lineTo(x,292+Math.sin(x*.012)*15+Math.cos(x*.027)*8);ctx.lineTo(1024,390);ctx.lineTo(0,390);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#667d86';ctx.beginPath();ctx.moveTo(0,347);ctx.bezierCurveTo(230,326,360,374,540,351);ctx.bezierCurveTo(740,329,840,366,1024,342);ctx.lineTo(1024,398);ctx.bezierCurveTo(800,422,680,389,500,413);ctx.bezierCurveTo(290,432,160,392,0,419);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(228,216,181,.35)';ctx.lineWidth=3;for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(50+i*190,372+i%2*7);ctx.lineTo(190+i*165,367+i%3*6);ctx.stroke();}
+  for(let i=0;i<22;i++){
+    const x=i*49-12,w=32+(i%4)*7,h=53+(i%5)*14,base=430+(i%3)*7;
+    ctx.fillStyle=['#5c5147','#786454','#84715e','#675b52'][i%4];ctx.fillRect(x,base-h,w,h);
+    ctx.fillStyle=['#493d36','#5b473a','#6c5140'][i%3];ctx.beginPath();ctx.moveTo(x-5,base-h);ctx.lineTo(x+w/2,base-h-21-(i%3)*5);ctx.lineTo(x+w+5,base-h);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#443a32';ctx.fillRect(x+w*.68,base-h-28,w*.13,19);ctx.fillStyle='rgba(224,203,158,.55)';
+    for(let row=0;row<3;row++)for(let col=0;col<2;col++)ctx.fillRect(x+5+col*12,base-h+13+row*13,5,7);
+  }
+  ctx.fillStyle='#66584b';ctx.fillRect(250,266,36,112);ctx.beginPath();ctx.moveTo(242,266);ctx.lineTo(268,218);ctx.lineTo(294,266);ctx.closePath();ctx.fill();
+  ctx.fillRect(685,248,31,124);ctx.beginPath();ctx.moveTo(678,248);ctx.lineTo(700,207);ctx.lineTo(723,248);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#a18a6c';ctx.fillRect(0,435,1024,77);ctx.fillStyle='rgba(43,39,33,.26)';ctx.fillRect(0,430,1024,9);
+  const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.needsUpdate=true;return tex;
+}
+function addWindowLandscape(roomRoot){
+  const texture=makeParisWindowTexture();
+  const lower=new THREE.Mesh(new THREE.PlaneGeometry(3.28,1.68),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide,depthWrite:false}));
+  lower.name='Paisagem exterior da janela do piso térreo';lower.position.set(0,2.565,-4.914);lower.renderOrder=1;scene.add(lower);
+  const upper=new THREE.Mesh(new THREE.PlaneGeometry(2.28,1.94),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide,depthWrite:false}));
+  upper.name='Paisagem exterior da janela do segundo andar';upper.position.set(0,6.88,-4.912);upper.renderOrder=1;scene.add(upper);
+  const glass=new THREE.Mesh(new THREE.PlaneGeometry(3.22,1.64),new THREE.MeshPhysicalMaterial({color:0xc6d5d9,transparent:true,opacity:.075,roughness:.18,metalness:0,side:THREE.DoubleSide,depthWrite:false}));
+  glass.name='Vidro discreto da janela inferior';glass.position.set(0,2.565,-4.82);glass.renderOrder=5;scene.add(glass);
+  makeFoldedCurtain('Cortina superior esquerda',-1.04,6.88,-4.48,.43,1.92,0x74433b);
+  makeFoldedCurtain('Cortina superior direita',1.04,6.88,-4.48,.43,1.92,0x74433b);
+  box(scene,'Varão dourado da janela superior',[0,7.99,-4.50],[2.85,.055,.055],mat(0x876334,.42,.55));
+  for(const x of [-1.36,1.36])sphere(scene,'Ponteira do varão superior',[x,7.99,-4.50],[.07,.07,.07],mat(0x9b773e,.4,.55));
+}
+function makeFoldedCurtain(name,centerX,centerY,z,width,height,color){
+  const cols=24,vertices=[],uvs=[],indices=[];
+  for(let i=0;i<=cols;i++){
+    const u=i/cols,x=centerX+(u-.5)*width,fold=Math.cos(u*Math.PI*8)*.025;
+    vertices.push(x,centerY+height/2,z+fold,x,centerY-height/2,z+fold);uvs.push(u,1,u,0);
+    if(i<cols){const a=i*2,b=a+1,c=a+2,d=a+3;indices.push(a,b,c,b,d,c);}
+  }
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));g.setIndex(indices);g.computeVertexNormals();
+  const curtain=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color,roughness:.95,side:THREE.DoubleSide}));curtain.name=name;scene.add(curtain);return curtain;
+}
+function addSecondFloorFurniture(){
+  const walnut=mat(0x4a2d1b,.82),dark=mat(0x2c1c13,.85),brass=mat(0x96713a,.42,.52);
+  [-3.55,-.05,3.48].forEach((x,i)=>{
+    const root=new THREE.Group();root.name='Móvel antigo sob os quadros '+(i+1);root.position.set(x,4.38,3.66);scene.add(root);
+    const w=i===1?1.45:1.55,d=.48;
+    box(root,'Tampo de nogueira',[0,.77,0],[w,.09,d],walnut);
+    box(root,'Faixa frontal entalhada',[0,.59,-d/2+.025],[w-.10,.25,.07],dark);
+    box(root,'Painel de madeira central',[0,.59,-d/2-.014],[w*.40,.16,.018],walnut);
+    for(const side of [-1,1]){
+      for(const zoff of [-.16,.16]){box(root,'Perna torneada '+side+' '+zoff,[side*(w/2-.09),.36,zoff],[.095,.72,.095],walnut);sphere(root,'Pé de latão '+side+' '+zoff,[side*(w/2-.09),.055,zoff],[.065,.035,.065],brass);}
+      box(root,'Moldura vertical '+side,[side*(w/2-.07),.59,-d/2-.035],[.035,.28,.035],brass);
+      sphere(root,'Puxador '+side,[side*.18,.61,-d/2-.06],[.035,.035,.018],brass);
+    }
+    box(root,'Travessa inferior',[0,.13,0],[w-.16,.08,d-.1],dark);
+    box(root,'Livro antigo '+i,[-.25,.84,.015],[.28,.045,.22],mat(i===1?0x5b3028:0x3e4b45,.92));
+    box(root,'Livro claro '+i,[.04,.85,.02],[.25,.04,.20],mat(0xb9a27b,.92));
+    if(i===1){const stand=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.18,12),brass);stand.position.set(.40,.90,.05);root.add(stand);sphere(root,'Pequena esfera de latão',[.40,1.01,.05],[.07,.07,.07],brass);}
+    upperBlocks.push({x0:x-w/2-.12,x1:x+w/2+.12,z0:3.30,z1:4.02});
+  });
 }
 
 function mat(color,roughness=.82,metalness=0){return new THREE.MeshStandardMaterial({color,roughness,metalness})}
@@ -120,22 +198,56 @@ function sphere(parent,name,pos,size,material){const mesh=new THREE.Mesh(new THR
 function capsuleBetween(parent,name,a,b,radius,material){const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),dir=B.clone().sub(A);const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,dir.length(),12),material);mesh.name=name;mesh.position.copy(A).add(B).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());parent.add(mesh);sphere(parent,name+' joint A',a,[radius,radius,radius],material);sphere(parent,name+' joint B',b,[radius,radius,radius],material)}
 
 function addPascalCharacter(){
-  const p=new THREE.Group();p.name='Blaise_Pascal_interativo';p.position.set(0,0,-1.72);p.rotation.y=Math.PI;scene.add(p);
-  const coat=mat(0x211916,.9),coatEdge=mat(0x4a3020,.84),breeches=mat(0x28221e,.92),skin=mat(0x94694b,.83),skinLight=mat(0xb48663,.84),hair=mat(0x20140f,.94),hairLit=mat(0x39251a,.92),linen=mat(0xe0d2b5,.94),brass=mat(0x926528,.35,.65),eye=mat(0x140d0a,.42);
-  box(p,'Calções',[0,.63,.005],[.60,.44,.30],breeches);
-  capsuleBetween(p,'Perna esquerda',[-.155,.12,.015],[-.155,.52,.015],.105,breeches);capsuleBetween(p,'Perna direita',[.155,.12,.015],[.155,.52,.015],.105,breeches);
-  box(p,'Sapato esquerdo',[-.16,.075,-.055],[.19,.095,.29],coat);box(p,'Sapato direito',[.16,.075,-.055],[.19,.095,.29],coat);
-  box(p,'Casaca',[0,.98,.015],[.64,.70,.34],coat);sphere(p,'Ombro esquerdo',[-.29,1.245,.005],[.24,.18,.34],coat);sphere(p,'Ombro direito',[.29,1.245,.005],[.24,.18,.34],coat);
-  box(p,'Borda casaca esquerda',[-.085,.96,-.172],[.025,.58,.016],coatEdge);box(p,'Borda casaca direita',[.085,.96,-.172],[.025,.58,.016],coatEdge);
-  for(let i=0;i<3;i++)sphere(p,'Botão de latão '+i,[0,1.12-i*.14,-.196],[.035,.035,.018],brass);
-  const ls=[[-.29,1.23,.015],[-.36,1.055,-.13],[-.25,.975,-.315]],rs=[[.29,1.23,.015],[.36,1.055,-.13],[.25,.975,-.315]];
-  capsuleBetween(p,'Manga superior esquerda',ls[0],ls[1],.095,coat);capsuleBetween(p,'Manga inferior esquerda',ls[1],ls[2],.073,coat);capsuleBetween(p,'Manga superior direita',rs[0],rs[1],.095,coat);capsuleBetween(p,'Manga inferior direita',rs[1],rs[2],.073,coat);
-  box(p,'Punho esquerdo',[-.25,.975,-.312],[.13,.075,.075],linen);box(p,'Punho direito',[.25,.975,-.312],[.13,.075,.075],linen);sphere(p,'Mão esquerda',[-.25,.955,-.365],[.105,.075,.09],skin);sphere(p,'Mão direita',[.25,.955,-.365],[.105,.075,.09],skin);
-  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.09,.105,.16,12),skin);neck.position.set(0,1.34,0);p.add(neck);
-  box(p,'Colarinho',[0,1.285,-.105],[.49,.095,.20],linen);box(p,'Ponta colarinho esquerda',[-.135,1.225,-.19],[.19,.055,.045],linen,[0,0,-.23]);box(p,'Ponta colarinho direita',[.135,1.225,-.19],[.19,.055,.045],linen,[0,0,.23]);
-  sphere(p,'Cabeça',[0,1.565,0],[.405,.49,.35],skin);sphere(p,'Testa iluminada',[0,1.675,-.143],[.26,.12,.055],skinLight);sphere(p,'Cabelo superior',[0,1.735,.018],[.465,.31,.405],hair);sphere(p,'Cabelo atrás',[0,1.48,.115],[.43,.48,.21],hair);
-  for(const side of [-1,1]){sphere(p,'Mecha cabelo '+side,[side*.207,1.495,.015],[.145,.49,.30],hair);sphere(p,'Onda cabelo '+side,[side*.235,1.36,.012],[.115,.22,.25],hairLit);sphere(p,'Orelha '+side,[side*.193,1.56,-.015],[.075,.11,.075],skin);sphere(p,'Olho '+side,[side*.079,1.594,-.162],[.053,.035,.025],linen);sphere(p,'Pupila '+side,[side*.079,1.594,-.181],[.024,.025,.012],eye);box(p,'Sobrancelha '+side,[side*.079,1.641,-.164],[.085,.018,.025],hair,[0,0,-side*.08]);}
-  sphere(p,'Nariz',[0,1.545,-.205],[.066,.105,.085],skinLight);box(p,'Bigode esquerdo',[-.042,1.484,-.205],[.093,.022,.03],hairLit,[0,0,-.12]);box(p,'Bigode direito',[.042,1.484,-.205],[.093,.022,.03],hairLit,[0,0,.12]);sphere(p,'Barba',[0,1.438,-.185],[.052,.07,.03],hair);
+  // Retrato procedural inspirado no retrato atribuído a Pascal por volta de 1650:
+  // cabelo castanho-escuro até os ombros, rosto sem barba, casaca escura e gola branca.
+  const p=new THREE.Group();p.name='Blaise_Pascal_interativo';p.position.set(0,0,-1.72);p.rotation.y=Math.PI;scene.add(p);pascalCharacter=p;
+  const coat=mat(0x191816,.94),coatEdge=mat(0x302820,.9),breeches=mat(0x292522,.95);
+  const skin=mat(0xd0ad8b,.88),skinShade=mat(0xb88f70,.9),hair=mat(0x211711,.96),hairLight=mat(0x34251a,.94);
+  const linen=mat(0xe9e0cd,.9),lace=mat(0xf1e9d9,.92),brass=mat(0x9b773e,.4,.5),eye=mat(0x251911,.5),shoe=mat(0x17130f,.88);
+  box(p,'Sapato esquerdo',[-.16,.075,-.045],[.22,.10,.31],shoe,[0,-.05,0]);
+  box(p,'Sapato direito',[.16,.075,-.045],[.22,.10,.31],shoe,[0,.05,0]);
+  capsuleBetween(p,'Meia esquerda',[-.16,.15,.015],[-.16,.48,.015],.075,linen);
+  capsuleBetween(p,'Meia direita',[.16,.15,.015],[.16,.48,.015],.075,linen);
+  box(p,'Calções históricos',[0,.61,.015],[.54,.34,.33],breeches);
+  box(p,'Aba esquerda dos calções',[-.16,.49,-.01],[.23,.18,.31],breeches,[0,0,-.04]);
+  box(p,'Aba direita dos calções',[.16,.49,-.01],[.23,.18,.31],breeches,[0,0,.04]);
+  sphere(p,'Torso da casaca',[0,1.00,.01],[.34,.47,.22],coat);
+  box(p,'Frente da casaca',[0,1.00,-.145],[.48,.66,.075],coat);
+  sphere(p,'Ombro esquerdo',[-.27,1.24,.0],[.20,.16,.24],coat);
+  sphere(p,'Ombro direito',[.27,1.24,.0],[.20,.16,.24],coat);
+  box(p,'Cauda esquerda da casaca',[-.16,.70,.015],[.22,.43,.25],coat,[0,0,-.08]);
+  box(p,'Cauda direita da casaca',[.16,.70,.015],[.22,.43,.25],coat,[0,0,.08]);
+  box(p,'Lapela esquerda',[-.095,1.16,-.19],[.16,.39,.035],coatEdge,[0,0,-.15]);
+  box(p,'Lapela direita',[.095,1.16,-.19],[.16,.39,.035],coatEdge,[0,0,.15]);
+  for(let i=0;i<5;i++)sphere(p,'Botão de latão '+i,[.015,1.22-i*.12,-.205],[.021,.021,.012],brass);
+  const lA=[[-.27,1.24,.01],[-.36,1.03,-.12],[-.28,.90,-.27]],rA=[[.27,1.24,.01],[.36,1.03,-.12],[.28,.90,-.27]];
+  capsuleBetween(p,'Manga superior esquerda',lA[0],lA[1],.085,coat);capsuleBetween(p,'Manga inferior esquerda',lA[1],lA[2],.069,coat);
+  capsuleBetween(p,'Manga superior direita',rA[0],rA[1],.085,coat);capsuleBetween(p,'Manga inferior direita',rA[1],rA[2],.069,coat);
+  box(p,'Punho branco esquerdo',[-.28,.91,-.27],[.13,.095,.09],linen);box(p,'Punho branco direito',[.28,.91,-.27],[.13,.095,.09],linen);
+  sphere(p,'Mão esquerda',[-.28,.86,-.33],[.075,.085,.075],skin);sphere(p,'Mão direita',[.28,.86,-.33],[.075,.085,.075],skin);
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.085,.095,.17,16),skin);neck.position.set(0,1.36,0);p.add(neck);
+  sphere(p,'Gola branca central',[0,1.31,-.17],[.25,.12,.10],linen);
+  for(let i=0;i<13;i++){const a=Math.PI+Math.PI*i/12;const x=Math.cos(a)*.25;const z=-.06+Math.sin(a)*.095;sphere(p,'Dobra de renda da gola '+i,[x,1.29+Math.sin(a)*.045,z],[.055,.055,.035],lace);}
+  box(p,'Camisa clara',[0,1.28,-.17],[.18,.20,.055],linen);
+  sphere(p,'Rosto de Blaise Pascal',[0,1.59,-.005],[.30,.405,.265],skin);
+  sphere(p,'Testa',[0,1.72,-.12],[.235,.16,.115],skin);
+  for(const side of [-1,1]){
+    sphere(p,'Orelha '+side,[side*.285,1.58,-.005],[.055,.085,.045],skinShade);
+    sphere(p,'Olho '+side,[side*.083,1.625,-.235],[.047,.028,.018],linen);
+    sphere(p,'Íris '+side,[side*.083,1.625,-.251],[.022,.023,.011],hairLight);
+    sphere(p,'Pupila '+side,[side*.083,1.625,-.26],[.010,.013,.006],eye);
+    box(p,'Sobrancelha '+side,[side*.083,1.67,-.235],[.075,.014,.018],hair,[0,0,-side*.05]);
+    sphere(p,'Cabelo lateral superior '+side,[side*.27,1.61,.0],[.13,.30,.20],hair);
+    sphere(p,'Cabelo lateral médio '+side,[side*.30,1.42,.015],[.13,.25,.20],hair);
+    sphere(p,'Cabelo até o ombro '+side,[side*.26,1.23,.035],[.125,.22,.18],hair);
+    for(let j=0;j<4;j++)sphere(p,'Cacho '+side+'-'+j,[side*(.29+.015*(j%2)),1.48-j*.085,-.035],[.07,.075,.065],j%2?hair:hairLight);
+  }
+  sphere(p,'Nariz',[0,1.575,-.285],[.048,.10,.055],skinShade);
+  sphere(p,'Ponta do nariz',[0,1.55,-.31],[.042,.035,.03],skin);
+  box(p,'Boca',[0,1.49,-.251],[.075,.012,.012],skinShade);
+  sphere(p,'Cabelo superior',[0,1.86,.015],[.35,.19,.30],hair);
+  sphere(p,'Cabelo atrás',[0,1.60,.16],[.34,.43,.17],hair);
+  for(let i=0;i<9;i++){const x=-.28+i*.07;sphere(p,'Onda do cabelo '+i,[x,1.82+Math.sin(i*1.3)*.025,-.015],[.07,.10,.075],i%2?hair:hairLight);}
   p.userData.interaction='pascal';
 }
 
@@ -147,35 +259,59 @@ function addInteractionTargets(){
 
 // Caixas simples de colisão para que o avatar não atravesse as paredes e os móveis principais.
 const lowerBlocks=[
-  {x0:-1.42,x1:1.42,z0:-1.52,z1:.08}, // mesa
-  {x0:-.48,x1:.48,z0:-2.18,z1:-1.22}, // Blaise Pascal
-  {x0:-5.22,x1:-4.48,z0:-2.16,z1:.58}, // estante lateral esquerda
-  {x0:4.18,x1:5.22,z0:-4.12,z1:-2.42}, // armário lateral direito
-  {x0:-1.42,x1:1.42,z0:-4.84,z1:-4.08} // armário sob a janela
+  {x0:-1.42,x1:1.42,z0:-1.52,z1:.08}, // mesa de estudo
+  {x0:-.48,x1:.48,z0:-2.18,z1:-1.22}, // Pascal
+  {x0:-5.22,x1:-4.48,z0:-2.16,z1:.58}, // móvel lateral esquerdo
+  {x0:4.18,x1:5.22,z0:-4.12,z1:-2.42}, // armário baixo direito
+  {x0:-1.42,x1:1.42,z0:-4.84,z1:-4.08}, // parede e peitoril da janela
+  {x0:-.43,x1:.43,z0:.03,z1:.78}, // cadeira diante da mesa
+  {x0:4.86,x1:5.65,z0:1.20,z1:3.78} // biblioteca lateral direita
 ];
 const upperBlocks=[
-  {x0:-4.48,x1:-1.06,z0:.48,z1:1.28}, // expositor matemático
+  {x0:-4.48,x1:-1.06,z0:.48,z1:1.28},
   {x0:-3.62,x1:-1.35,z0:4.08,z1:4.78},{x0:-1.08,x1:1.08,z0:4.08,z1:4.78},{x0:1.35,x1:3.62,z0:4.08,z1:4.78},
   {x0:-5.28,x1:-4.58,z0:.75,z1:2.85},{x0:-5.28,x1:-4.58,z0:-2.85,z1:-.75},
   {x0:4.58,x1:5.28,z0:.75,z1:2.85},{x0:4.58,x1:5.28,z0:-2.85,z1:-.75}
 ];
-function floorHeightAt(x,z,currentY){
-  if(x>2.02&&x<3.38&&z>-4.35&&z<2.15){return THREE.MathUtils.clamp(2.28-Math.tan(THREE.MathUtils.degToRad(37))*(z+1.11),0,4.42)}
-  return currentY>2.2?4.38:0;
-}
+const stairLane={x0:2.40,x1:3.00,topZ:-3.42,bottomZ:1.78,height:4.38};
+let activeFloorY=0;
+let onStairs=false;
+function isStairX(x){return x>stairLane.x0&&x<stairLane.x1}
+function isStairSpan(z){return z>stairLane.topZ&&z<stairLane.bottomZ}
+function stairHeightAt(z){const t=THREE.MathUtils.clamp((stairLane.bottomZ-z)/(stairLane.bottomZ-stairLane.topZ),0,1);return t*stairLane.height}
+function floorHeightAt(x,z,currentY){if(onStairs&&isStairX(x)&&isStairSpan(z))return stairHeightAt(z);return activeFloorY}
 function collides(x,z,floorY){
-  const blocks=floorY>2.2?upperBlocks:lowerBlocks;
+  const blocks=floorY>2.45?upperBlocks:lowerBlocks;
   for(const b of blocks){if(x+playerRadius>b.x0&&x-playerRadius<b.x1&&z+playerRadius>b.z0&&z-playerRadius<b.z1)return true}
   return false;
 }
 function moveRig(dx,dz){
-  const nx=THREE.MathUtils.clamp(rig.position.x+dx,-5.12,5.12);
-  const nz=THREE.MathUtils.clamp(rig.position.z+dz,-4.68,4.58);
-  // Testa os eixos separadamente para permitir deslizar junto a uma parede.
-  const fyx=floorHeightAt(nx,rig.position.z,rig.position.y);
-  if(!collides(nx,rig.position.z,fyx)){rig.position.x=nx;rig.position.y=fyx}
-  const fyz=floorHeightAt(rig.position.x,nz,rig.position.y);
-  if(!collides(rig.position.x,nz,fyz)){rig.position.z=nz;rig.position.y=fyz}
+  const applyAxis=(axis,amount)=>{
+    if(!amount)return;
+    const currentX=rig.position.x,currentZ=rig.position.z;
+    let nx=currentX,nz=currentZ;
+    if(axis==='x')nx=THREE.MathUtils.clamp(currentX+amount,-5.12,5.12);
+    else nz=THREE.MathUtils.clamp(currentZ+amount,-4.68,4.58);
+    const candidateXInside=isStairX(nx),candidateZInside=isStairSpan(nz);
+    let nextStairs=onStairs,nextFloor=activeFloorY,nextY=activeFloorY;
+    if(onStairs){
+      if(axis==='x'&&candidateZInside&&!candidateXInside)return;
+      if(nz<=stairLane.topZ){nextStairs=false;nextFloor=stairLane.height;nextY=stairLane.height;}
+      else if(nz>=stairLane.bottomZ){nextStairs=false;nextFloor=0;nextY=0;}
+      else if(candidateXInside&&candidateZInside)nextY=stairHeightAt(nz);
+      else return;
+    }else{
+      nextY=activeFloorY;
+      if(candidateXInside&&candidateZInside){
+        if(activeFloorY<1&&currentZ>=stairLane.bottomZ&&nz<stairLane.bottomZ){nextStairs=true;nextY=stairHeightAt(nz);}
+        else if(activeFloorY>3&&currentZ<=stairLane.topZ&&nz>stairLane.topZ){nextStairs=true;nextY=stairHeightAt(nz);}
+      }
+    }
+    if(collides(nx,nz,nextY))return;
+    rig.position.x=nx;rig.position.z=nz;rig.position.y=nextY;
+    onStairs=nextStairs;activeFloorY=nextFloor;
+  };
+  applyAxis('x',dx);applyAxis('z',dz);
 }
 
 function drawDialogueTexture(){
@@ -191,8 +327,12 @@ function drawDialogueTexture(){
 function wrapText(ctx,text,x,y,maxWidth,lineHeight){const paragraphs=text.split('\n');for(const para of paragraphs){const words=para.split(' ');let line='';for(const word of words){const test=line?line+' '+word:word;if(ctx.measureText(test).width>maxWidth&&line){ctx.fillText(line,x,y);line=word;y+=lineHeight}else line=test}if(line){ctx.fillText(line,x,y);y+=lineHeight}}}
 let dialogueCanvas,dialogueTexture,dialoguePanel,dialogueTitle='',dialogueBody='',dialoguePrompt='';
 function makeXRDialogue(){
-  dialogueCanvas=document.createElement('canvas');dialogueCanvas.width=1024;dialogueCanvas.height=360;dialogueTexture=new THREE.CanvasTexture(dialogueCanvas);dialogueTexture.colorSpace=THREE.SRGBColorSpace;
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.45,.51),new THREE.MeshBasicMaterial({map:dialogueTexture,transparent:true,depthTest:false,side:THREE.DoubleSide}));mesh.position.set(0,-.20,-1.35);mesh.renderOrder=999;mesh.visible=false;camera.add(mesh);dialoguePanel=mesh;
+  dialogueCanvas=document.createElement('canvas');dialogueCanvas.width=1024;dialogueCanvas.height=360;
+  dialogueTexture=new THREE.CanvasTexture(dialogueCanvas);dialogueTexture.colorSpace=THREE.SRGBColorSpace;
+  const material=new THREE.MeshBasicMaterial({map:dialogueTexture,transparent:true,depthTest:true,depthWrite:false,side:THREE.DoubleSide});
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.62,.57),material);
+  mesh.name='Caixa de diálogo suspensa em frente a Blaise Pascal';
+  mesh.position.set(0,2.20,-.96);mesh.renderOrder=12;mesh.visible=false;scene.add(mesh);dialoguePanel=mesh;
 }
 makeXRDialogue();
 
@@ -205,7 +345,8 @@ function updateDialogue(){
   else if(dialogStage===1){dialogueTitle='O “VAI UM”';dialogueBody='Quando uma casa da soma passa de 9, acrescentamos 1 à casa imediatamente à esquerda. A Pascalina mecaniza esse transporte entre as rodas numeradas.';dialoguePrompt='GATILHO ESQUERDO: CONTINUAR  ·  DIREITO: FECHAR';}
   else{dialogueTitle='BOA EXPLORAÇÃO';dialogueBody='Observe os livros, a Pascalina e os painéis matemáticos. Suba a escada para visitar a galeria do segundo andar.';dialoguePrompt='GATILHO DIREITO: FECHAR';}
   if(dialoguePanel){dialoguePanel.visible=true;drawDialogueTexture()}
-  dialogEl.classList.remove('hidden');dialogTitleEl.textContent=dialogueTitle;dialogBodyEl.textContent=dialogueBody;
+  if(renderer.xr.isPresenting)dialogEl.classList.add('hidden');else dialogEl.classList.remove('hidden');
+  dialogTitleEl.textContent=dialogueTitle;dialogBodyEl.textContent=dialogueBody;
   dialogNextButton.textContent=dialogStage===2?'Fechar':'Continuar';dialogCancelButton.style.display=dialogStage===2?'none':'inline-block';
 }
 function advanceDialogue(){if(dialogStage<0)return;if(dialogStage>=2){closeDialogue();return}dialogStage++;updateDialogue()}
@@ -226,7 +367,7 @@ document.addEventListener('pointerlockchange',()=>{pointerLocked=document.pointe
 document.addEventListener('mousemove',e=>{if(!pointerLocked||renderer.xr.isPresenting||dialogStage>=0)return;camera.rotation.y-=e.movementX*.0022;pitch=THREE.MathUtils.clamp(pitch-e.movementY*.0022,-1.42,1.42);camera.rotation.x=pitch});
 document.addEventListener('keydown',e=>{keyState.add(e.code);if(e.code==='Escape'){if(dialogStage>=0)closeDialogue();else if(pointerLocked)document.exitPointerLock?.()}if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});
 document.addEventListener('keyup',e=>keyState.delete(e.code));
-document.querySelector('#resetView').addEventListener('click',()=>{rig.position.set(0,0,3.65);rig.rotation.set(0,0,0);camera.position.set(0,renderer.xr.isPresenting?0:1.62,0);camera.rotation.set(0,0,0);pitch=0;closeDialogue()});
+document.querySelector('#resetView').addEventListener('click',()=>{rig.position.set(0,0,3.65);rig.rotation.set(0,0,0);activeFloorY=0;onStairs=false;camera.position.set(0,renderer.xr.isPresenting?0:1.62,0);camera.rotation.set(0,0,0);pitch=0;closeDialogue()});
 
 const controllers=[];
 for(let i=0;i<2;i++){
@@ -237,7 +378,9 @@ for(let i=0;i<2;i++){
     if(dialogStage>=0){if(hand==='left')advanceDialogue();else closeDialogue();return}
     if(hand==='right'){const origin=controller.getWorldPosition(new THREE.Vector3());const dir=new THREE.Vector3(0,0,-1).applyQuaternion(controller.getWorldQuaternion(new THREE.Quaternion())).normalize();interactRay(origin,dir)}
   });
-  const pts=[new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-5)];const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xe4bc7e,transparent:true,opacity:.68}));controller.add(line);scene.add(controller);controllers.push(controller);
+  const pts=[new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-5)];const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xe4bc7e,transparent:true,opacity:.68}));controller.add(line);controller.userData.rayLine=line;
+  const reticle=new THREE.Mesh(new THREE.RingGeometry(.025,.045,24),new THREE.MeshBasicMaterial({color:0xf2d5a0,side:THREE.DoubleSide,depthTest:true}));reticle.position.set(0,0,-5);controller.add(reticle);controller.userData.reticle=reticle;
+  scene.add(controller);controllers.push(controller);
 }
 
 function readStick(source){if(!source||!source.gamepad)return {x:0,y:0};const a=source.gamepad.axes||[];let x=Number(a[0]||0),y=Number(a[1]||0);if(Math.hypot(x,y)<.04&&a.length>=4&&Math.hypot(Number(a[2]||0),Number(a[3]||0))>.12){x=Number(a[2]||0);y=Number(a[3]||0)}const m=Math.min(Math.hypot(x,y),1);if(m<.15)return {x:0,y:0};const k=(m-.15)/.85;return {x:x/m*k,y:y/m*k}}
@@ -260,11 +403,12 @@ enterVRButton.addEventListener('click',async()=>{
     try{if(session&&session.end)await session.end();renderer.xr.setReferenceSpaceType('local');session=await navigator.xr.requestSession('immersive-vr');xrUsesFloorSpace=false;await renderer.xr.setSession(session)}catch(secondError){console.error(secondError);statusEl.textContent='Não foi possível iniciar o VR: '+(secondError.message||secondError);enterVRButton.disabled=false;return}
   }
   xrSession=session;statusEl.textContent='VR ativo. Analógico esquerdo anda; direito gira em passos de 30°.';
-  session.addEventListener('end',()=>{xrSession=null;camera.position.set(0,1.62,0);rig.position.y=0;enterVRButton.disabled=false;enterVRButton.textContent='Entrar em VR';statusEl.textContent='Sessão VR encerrada. Você pode entrar novamente.';closeDialogue()},{once:true});
+  session.addEventListener('end',()=>{xrSession=null;camera.position.set(0,1.62,0);rig.position.y=0;activeFloorY=0;onStairs=false;enterVRButton.disabled=false;enterVRButton.textContent='Entrar em VR';statusEl.textContent='Sessão VR encerrada. Você pode entrar novamente.';closeDialogue()},{once:true});
   enterVRButton.textContent='VR ativo';
 });
 
-function animate(){const delta=Math.min(clock.getDelta(),.05);updateDesktopMovement(delta);updateXRMovement(delta);renderer.render(scene,camera)}
+function updateControllerPointers(){if(!renderer.xr.isPresenting)return;for(const controller of controllers){if(controller.userData.handedness!=='right')continue;const origin=controller.getWorldPosition(new THREE.Vector3());const direction=new THREE.Vector3(0,0,-1).applyQuaternion(controller.getWorldQuaternion(new THREE.Quaternion())).normalize();raycaster.set(origin,direction);raycaster.far=8.5;const hits=raycaster.intersectObjects(interactables,false);const distance=hits.length?Math.min(hits[0].distance,5):5;const line=controller.userData.rayLine;if(line)line.geometry.setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-distance)]);if(controller.userData.reticle)controller.userData.reticle.position.set(0,0,-distance)}}
+function animate(){const delta=Math.min(clock.getDelta(),.05);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers();renderer.render(scene,camera)}
 renderer.setAnimationLoop(animate);
 window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
 renderer.xr.addEventListener('sessionstart',()=>{camera.position.set(0,xrUsesFloorSpace?0:1.62,0);camera.rotation.set(0,0,0);pitch=0;crosshair.style.opacity='0';document.exitPointerLock?.();});
