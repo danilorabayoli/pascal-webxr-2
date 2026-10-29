@@ -421,204 +421,163 @@ function alignHistoricWindows(roomRoot){
   });
 }
 function createHistoricWindows(roomRoot){
-  // Mede a face interna real da parede, sem estimar apenas por coordenadas fixas.
   const windows=[
     {name:'Janela histórica do andar inferior',cx:0,cy:2.565,width:3.28,height:1.68},
     {name:'Janela histórica do andar superior',cx:0,cy:6.88,width:2.28,height:1.94}
   ];
-  const curtainCloth=new THREE.MeshStandardMaterial({
-    color:0x68202b,roughness:.96,metalness:0,side:THREE.DoubleSide
-  });
-  const curtainLining=new THREE.MeshStandardMaterial({
-    color:0x421720,roughness:1,metalness:0,side:THREE.DoubleSide
-  });
+  const curtainCloth=new THREE.MeshStandardMaterial({color:0x68202b,roughness:.96,metalness:0,side:THREE.DoubleSide});
+  const curtainLining=new THREE.MeshStandardMaterial({color:0x421720,roughness:1,metalness:0,side:THREE.DoubleSide});
   const bronze=mat(0x765737,.62,.28);
   const rodWood=mat(0x4c3021,.65,.04);
-
   for(const w of windows){
-    const wallZ=estimateInteriorWallZ(roomRoot,w.cx,w.cy,w.width,w.height);
-    createHistoricWindow(w.name,w.cx,w.cy,w.width,w.height,wallZ);
-    createHistoricCurtainSet(w,wallZ,curtainCloth,curtainLining,bronze,rodWood);
+    const wallFrame=estimateInteriorWallFrame(roomRoot,w);
+    const assembly=createHistoricWindow(w,wallFrame);
+    createHistoricCurtainSet(assembly,w,curtainCloth,curtainLining,bronze,rodWood);
   }
 }
-function estimateInteriorWallZ(roomRoot,cx,cy,width,height){
-  // Raycast em pontos ao redor da abertura: laterais e faixas acima/abaixo.
-  // A mediana dos impactos na face interna reduz interferência de móveis.
+function estimateInteriorWallFrame(roomRoot,w){
+  // Mede trechos sólidos que circundam o vão e ajusta o plano à geometria do modelo.
   roomRoot.updateMatrixWorld(true);
   const meshes=[];
-  roomRoot.traverse(obj=>{
-    if(obj.isMesh&&obj.visible&&obj.geometry)meshes.push(obj);
-  });
-  const points=[];
+  roomRoot.traverse(obj=>{if(obj.isMesh&&obj.visible&&obj.geometry)meshes.push(obj);});
+  const samples=[];
   for(const side of [-1,1]){
-    const x=cx+side*(width/2+.16);
-    for(const y of [cy-height*.28,cy,cy+height*.28])points.push([x,y]);
+    const x=w.cx+side*(w.width/2+.14);
+    for(const fy of [-.34,0,.34])samples.push([x,w.cy+fy*w.height]);
+    samples.push([w.cx+side*(w.width/2+.26),w.cy]);
   }
-  for(const y of [cy-height/2-.13,cy+height/2+.13]){
-    for(const x of [cx-width*.34,cx,cx+width*.34])points.push([x,y]);
+  for(const side of [-1,1]){
+    const y=w.cy+side*(w.height/2+.14);
+    for(const fx of [-.38,0,.38])samples.push([w.cx+fx*w.width,y]);
   }
 
   const raycaster=new THREE.Raycaster();
-  const downZ=new THREE.Vector3(0,0,-1);
   const normalMatrix=new THREE.Matrix3();
   const hits=[];
-  for(const [x,y] of points){
-    raycaster.set(new THREE.Vector3(x,y,.35),downZ);
-    raycaster.near=0;
-    raycaster.far=12;
-    const intersections=raycaster.intersectObjects(meshes,false);
-    for(const hit of intersections){
-      const z=hit.point.z;
-      if(z>-3.0||z<-6.5||!hit.face)continue;
+  for(const [x,y] of samples){
+    raycaster.set(new THREE.Vector3(x,y,.35),new THREE.Vector3(0,0,-1));
+    raycaster.near=0;raycaster.far=12;
+    for(const hit of raycaster.intersectObjects(meshes,false)){
+      if(hit.point.z>-3.4||hit.point.z<-6.25||!hit.face)continue;
       normalMatrix.getNormalMatrix(hit.object.matrixWorld);
-      const n=hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
-      if(Math.abs(n.z)<.68)continue;
-      hits.push(z);
+      const normal=hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+      if(Math.abs(normal.z)<.72)continue;
+      hits.push({dx:x-w.cx,dy:y-w.cy,z:hit.point.z});
       break;
     }
   }
-  if(hits.length<3){
-    console.warn('Não consegui medir a face da parede para '+cy+'; usando posição de segurança.');
-    return -4.57;
+  const fitPlane=items=>{
+    if(items.length<3)return null;
+    const mx=items.reduce((a,p)=>a+p.dx,0)/items.length;
+    const my=items.reduce((a,p)=>a+p.dy,0)/items.length;
+    const mz=items.reduce((a,p)=>a+p.z,0)/items.length;
+    let xx=0,yy=0,xy=0,xz=0,yz=0;
+    for(const p of items){
+      const x=p.dx-mx,y=p.dy-my,z=p.z-mz;
+      xx+=x*x;yy+=y*y;xy+=x*y;xz+=x*z;yz+=y*z;
+    }
+    const det=xx*yy-xy*xy;
+    if(Math.abs(det)<1e-5)return {a:0,z:mz};
+    const a=(xz*yy-yz*xy)/det;
+    const b=(yz*xx-xz*xy)/det;
+    return {a,z:mz-a*mx-b*my,b};
+  };
+  let fit=fitPlane(hits);
+  if(fit&&hits.length>=4){
+    const residuals=hits.map(p=>Math.abs(p.z-(fit.a*p.dx+(fit.b||0)*p.dy+fit.z))).sort((a,b)=>a-b);
+    const median=residuals[Math.floor(residuals.length/2)]||0;
+    const limit=Math.max(.09,median*2.5);
+    const inliers=hits.filter(p=>Math.abs(p.z-(fit.a*p.dx+(fit.b||0)*p.dy+fit.z))<=limit);
+    const refined=fitPlane(inliers);
+    if(refined&&inliers.length>=3)fit=refined;
   }
-  hits.sort((a,b)=>a-b);
-  const median=hits[Math.floor(hits.length/2)];
-  const inliers=hits.filter(z=>Math.abs(z-median)<.22);
-  const surfaceZ=inliers.length>=3
-    ?inliers.reduce((sum,z)=>sum+z,0)/inliers.length
-    :median;
-  console.info('Superfície interna da parede medida para janela em Y='+cy+': Z='+surfaceZ.toFixed(3)+' ('+hits.length+' amostras)');
-  return surfaceZ;
+  if(!fit||hits.length<3){
+    // Z=-4.914 corresponde ao plano externo que já existia no projeto; evita o antigo fallback -4.57.
+    console.warn('Plano da parede não medido para '+w.name+'; usando Z=-4.914 e mantendo o prumo.');
+    return {z:-4.914,rotationY:0};
+  }
+  // Só gira em torno do eixo vertical: a janela continua aprumada, sem inclinar os montantes.
+  const slope=THREE.MathUtils.clamp(fit.a,-.7,.7);
+  const rotationY=-Math.atan(slope);
+  console.info(w.name+': '+hits.length+' amostras de parede; Z='+fit.z.toFixed(3)+', rotação horizontal='+THREE.MathUtils.radToDeg(rotationY).toFixed(2)+'°');
+  return {z:fit.z,rotationY};
 }
-function createHistoricWindow(name,cx,cy,width,height,wallZ){
+function createHistoricWindow(w,wallFrame){
+  const {name,cx,cy,width,height}=w;
   const group=new THREE.Group();
   group.name=name;
+  group.position.set(cx,cy,wallFrame.z);
+  group.rotation.y=wallFrame.rotationY;
   scene.add(group);
 
-  const frameDepth=.105;
-  const frameT=.125;
-  const muntinT=.052;
-  // A face frontal da moldura coincide com a face interna da parede.
-  // A maior parte da espessura entra na abertura, em vez de avançar para o quarto.
-  const frameZ=wallZ-frameDepth/2+.002;
-  const glassZ=wallZ-.052;
-  const wood=mat(0x493023,.72,.015);
-  const woodEdge=mat(0x745039,.68,.02);
-  const muntin=mat(0x553824,.72,.01);
-  const warmDetail=mat(0x98764c,.58,.18);
+  const frameDepth=.105,frameT=.125,muntinT=.052;
+  const frameZ=-frameDepth/2+.002;
+  const glassZ=-.035;
+  const wood=mat(0x493023,.72,.015),woodEdge=mat(0x745039,.68,.02),muntin=mat(0x553824,.72,.01),warmDetail=mat(0x98764c,.58,.18);
 
-  box(group,name+' — montante esquerdo',[cx-width/2+frameT/2,cy,frameZ],[frameT,height,frameDepth],wood);
-  box(group,name+' — montante direito',[cx+width/2-frameT/2,cy,frameZ],[frameT,height,frameDepth],wood);
-  box(group,name+' — verga superior',[cx,cy+height/2-frameT/2,frameZ],[width,frameT,frameDepth],wood);
-  box(group,name+' — travessa inferior',[cx,cy-height/2+frameT/2,frameZ],[width+.045,frameT*.94,frameDepth+.025],wood);
+  box(group,name+' — montante esquerdo',[-width/2+frameT/2,0,frameZ],[frameT,height,frameDepth],wood);
+  box(group,name+' — montante direito',[width/2-frameT/2,0,frameZ],[frameT,height,frameDepth],wood);
+  box(group,name+' — verga superior',[0,height/2-frameT/2,frameZ],[width,frameT,frameDepth],wood);
+  box(group,name+' — travessa inferior',[0,-height/2+frameT/2,frameZ],[width+.045,frameT*.94,frameDepth+.025],wood);
 
-  const inset=.032;
-  const innerW=width-2*frameT;
-  const innerH=height-2*frameT;
-  const frontZ=wallZ+.006;
-  box(group,name+' — filete interno esquerdo',[cx-width/2+frameT+inset/2,cy,frontZ],[inset,innerH,.018],woodEdge);
-  box(group,name+' — filete interno direito',[cx+width/2-frameT-inset/2,cy,frontZ],[inset,innerH,.018],woodEdge);
-  box(group,name+' — filete interno superior',[cx,cy+height/2-frameT-inset/2,frontZ],[innerW,inset,.018],woodEdge);
-  box(group,name+' — filete interno inferior',[cx,cy-height/2+frameT+inset/2,frontZ],[innerW,inset,.018],woodEdge);
+  const inset=.032,innerW=width-2*frameT,innerH=height-2*frameT,frontZ=.006;
+  box(group,name+' — filete interno esquerdo',[-width/2+frameT+inset/2,0,frontZ],[inset,innerH,.018],woodEdge);
+  box(group,name+' — filete interno direito',[width/2-frameT-inset/2,0,frontZ],[inset,innerH,.018],woodEdge);
+  box(group,name+' — filete interno superior',[0,height/2-frameT-inset/2,frontZ],[innerW,inset,.018],woodEdge);
+  box(group,name+' — filete interno inferior',[0,-height/2+frameT+inset/2,frontZ],[innerW,inset,.018],woodEdge);
 
-  const cols=3,rows=3;
-  const cellW=(innerW-(cols-1)*muntinT)/cols;
-  const cellH=(innerH-(rows-1)*muntinT)/rows;
+  const cols=3,rows=3,cellW=(innerW-(cols-1)*muntinT)/cols,cellH=(innerH-(rows-1)*muntinT)/rows;
   for(let c=1;c<cols;c++){
-    const x=cx-width/2+frameT+c*cellW+(c-.5)*muntinT;
-    box(group,name+' — montante do caixilho '+c,[x,cy,frameZ],[muntinT,innerH,frameDepth*.82],muntin);
+    const x=-width/2+frameT+c*cellW+(c-.5)*muntinT;
+    box(group,name+' — montante do caixilho '+c,[x,0,frameZ],[muntinT,innerH,frameDepth*.82],muntin);
   }
   for(let r=1;r<rows;r++){
-    const y=cy-height/2+frameT+r*cellH+(r-.5)*muntinT;
-    box(group,name+' — travessa do caixilho '+r,[cx,y,frameZ],[innerW,muntinT,frameDepth*.82],muntin);
+    const y=-height/2+frameT+r*cellH+(r-.5)*muntinT;
+    box(group,name+' — travessa do caixilho '+r,[0,y,frameZ],[innerW,muntinT,frameDepth*.82],muntin);
   }
-
   const glassMaterial=new THREE.MeshPhysicalMaterial({
     color:0xf0f4f0,transparent:true,opacity:.055,roughness:.14,metalness:0,
     clearcoat:.12,clearcoatRoughness:.12,side:THREE.DoubleSide,depthWrite:false
   });
-  for(let r=0;r<rows;r++){
-    for(let c=0;c<cols;c++){
-      const pane=new THREE.Mesh(
-        new THREE.PlaneGeometry(Math.max(.05,cellW-.012),Math.max(.05,cellH-.012)),
-        glassMaterial
-      );
-      pane.name=name+' — vidro transparente '+(r+1)+'-'+(c+1);
-      pane.position.set(
-        cx-width/2+frameT+c*(cellW+muntinT)+cellW/2,
-        cy-height/2+frameT+r*(cellH+muntinT)+cellH/2,
-        glassZ
-      );
-      pane.renderOrder=2;
-      group.add(pane);
-    }
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    const pane=new THREE.Mesh(new THREE.PlaneGeometry(Math.max(.05,cellW-.012),Math.max(.05,cellH-.012)),glassMaterial);
+    pane.name=name+' — vidro transparente '+(r+1)+'-'+(c+1);
+    pane.position.set(-width/2+frameT+c*(cellW+muntinT)+cellW/2,-height/2+frameT+r*(cellH+muntinT)+cellH/2,glassZ);
+    pane.renderOrder=2;group.add(pane);
   }
-  for(const dx of [-.055,.055]){
-    box(group,name+' — pequeno pino de latão',[cx+dx,cy-height/2+frameT/2,frontZ+.012],[.018,.032,.012],warmDetail);
-  }
+  for(const dx of [-.055,.055])box(group,name+' — pequeno pino de latão',[dx,-height/2+frameT/2,frontZ+.012],[.018,.032,.012],warmDetail);
+  return group;
 }
-function createHistoricCurtainSet(w,wallZ,clothMaterial,liningMaterial,bronze,rodWood){
-  const {name,cx,cy,width,height}=w;
-  const rodY=cy+height/2+.105;
-  const curtainZ=wallZ+.032;
-  const panelWidth=Math.min(width*.19,.58);
-  const bottomY=cy-height/2+.075;
-  const topY=rodY-.018;
-
-  // Varão curto e discreto, imediatamente acima do vão, junto à parede.
+function createHistoricCurtainSet(parent,w,clothMaterial,liningMaterial,bronze,rodWood){
+  const {name,width,height}=w;
+  const rodY=height/2+.105,panelWidth=Math.min(width*.19,.58),bottomY=-height/2+.075,topY=rodY-.018;
   const rod=new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,width+.38,8),rodWood);
-  rod.name=name+' — varão de madeira';
-  rod.position.set(cx,rodY,wallZ+.055);
-  rod.rotation.z=Math.PI/2;
-  scene.add(rod);
+  rod.name=name+' — varão de madeira';rod.position.set(0,rodY,.045);rod.rotation.z=Math.PI/2;parent.add(rod);
   for(const side of [-1,1]){
-    const x=cx+side*(width/2+.13);
-    box(scene,name+' — suporte de varão '+side,[x,rodY,wallZ+.025],[.055,.075,.075],bronze);
-    sphere(scene,name+' — ponteira do varão '+side,[cx+side*(width/2+.19),rodY,wallZ+.055],[.045,.045,.045],rodWood);
+    box(parent,name+' — suporte de varão '+side,[side*(width/2+.13),rodY,.025],[.055,.075,.075],bronze);
+    sphere(parent,name+' — ponteira do varão '+side,[side*(width/2+.19),rodY,.045],[.045,.045,.045],rodWood);
   }
-
-  // Duas folhas recolhidas nas laterais; pregas verticais e bainha ligeiramente ondulada.
-  const leftX=cx-width/2+panelWidth/2+.015;
-  const rightX=cx+width/2-panelWidth/2-.015;
-  makeHistoricCurtainPanel(name+' — cortina esquerda',leftX,topY,bottomY,panelWidth,curtainZ,clothMaterial,liningMaterial,-1);
-  makeHistoricCurtainPanel(name+' — cortina direita',rightX,topY,bottomY,panelWidth,curtainZ,clothMaterial,liningMaterial,1);
+  makeHistoricCurtainPanel(parent,name+' — cortina esquerda',-width/2+panelWidth/2+.015,topY,bottomY,panelWidth,.035,clothMaterial,liningMaterial,-1);
+  makeHistoricCurtainPanel(parent,name+' — cortina direita',width/2-panelWidth/2-.015,topY,bottomY,panelWidth,.035,clothMaterial,liningMaterial,1);
 }
-function makeHistoricCurtainPanel(name,cx,topY,bottomY,width,baseZ,clothMaterial,liningMaterial,side){
+function makeHistoricCurtainPanel(parent,name,cx,topY,bottomY,width,baseZ,clothMaterial,liningMaterial,side){
   const cols=18,rows=12,positions=[],uvs=[],indices=[];
   for(let i=0;i<=cols;i++){
-    const u=i/cols;
-    const pleat=Math.cos(u*Math.PI*8)*.024;
+    const u=i/cols,pleat=Math.cos(u*Math.PI*8)*.024;
     for(let j=0;j<=rows;j++){
       const v=j/rows;
       const hemWave=Math.sin(u*Math.PI*4+side*.35)*.014*v;
-      const x=cx+(u-.5)*width+Math.sin(u*Math.PI)*.012;
-      const y=topY-v*(topY-bottomY)-hemWave;
-      const z=baseZ+pleat*(.78+.22*v)+Math.sin(v*Math.PI)*.008;
-      positions.push(x,y,z);
+      positions.push(cx+(u-.5)*width+Math.sin(u*Math.PI)*.012,topY-v*(topY-bottomY)-hemWave,baseZ+pleat*(.78+.22*v)+Math.sin(v*Math.PI)*.008);
       uvs.push(u,1-v);
-      if(i<cols&&j<rows){
-        const a=i*(rows+1)+j,b=(i+1)*(rows+1)+j,c=a+1,d=b+1;
-        indices.push(a,b,c,b,d,c);
-      }
+      if(i<cols&&j<rows){const a=i*(rows+1)+j,b=(i+1)*(rows+1)+j,c=a+1,d=b+1;indices.push(a,b,c,b,d,c);}
     }
   }
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
   geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  const panel=new THREE.Mesh(geometry,clothMaterial);
-  panel.name=name;
-  panel.frustumCulled=true;
-  panel.renderOrder=3;
-  scene.add(panel);
-
-  // Dobra de forro sombreada atrás do tecido, mantendo a malha simples para VR.
-  const lining=new THREE.Mesh(geometry.clone(),liningMaterial);
-  lining.name=name+' — forro';
-  lining.position.z-=.008;
-  lining.renderOrder=2;
-  scene.add(lining);
+  geometry.setIndex(indices);geometry.computeVertexNormals();
+  const panel=new THREE.Mesh(geometry,clothMaterial);panel.name=name;panel.frustumCulled=true;panel.renderOrder=3;parent.add(panel);
+  const lining=new THREE.Mesh(geometry.clone(),liningMaterial);lining.name=name+' — forro';lining.position.z-=.008;lining.renderOrder=2;parent.add(lining);
 }
 function addInvisibleFurnitureLighting(){
   // Luzes de apoio sob os principais conjuntos de móveis; menos fontes dinâmicas
