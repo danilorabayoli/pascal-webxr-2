@@ -1284,7 +1284,41 @@ for(let i=0;i<2;i++){
 
 function readStick(source){if(!source||!source.gamepad)return {x:0,y:0};const a=source.gamepad.axes||[];let x=Number(a[0]||0),y=Number(a[1]||0);if(Math.hypot(x,y)<.04&&a.length>=4&&Math.hypot(Number(a[2]||0),Number(a[3]||0))>.12){x=Number(a[2]||0);y=Number(a[3]||0)}const m=Math.min(Math.hypot(x,y),1);if(m<.15)return {x:0,y:0};const k=(m-.15)/.85;return {x:x/m*k,y:y/m*k}}
 function getXRSources(){const session=renderer.xr.getSession();if(!session)return {left:null,right:null};let left=null,right=null;for(const source of session.inputSources){if(source.handedness==='left')left=source;else if(source.handedness==='right')right=source}return {left,right}}
-function updateXRMovement(delta){if(!renderer.xr.isPresenting||dialogStage>=0||isSitting)return;snapTurnCooldown=Math.max(0,snapTurnCooldown-delta);const {left,right}=getXRSources();const move=readStick(left);camera.getWorldDirection(tempForward);tempForward.y=0;if(tempForward.lengthSq()>.0001)tempForward.normalize();tempRight.crossVectors(tempForward,up).normalize();tempMove.set(0,0,0).addScaledVector(tempRight,move.x).addScaledVector(tempForward,-move.y);if(tempMove.lengthSq()>1)tempMove.normalize();const px=rig.position.x,pz=rig.position.z;moveRig(tempMove.x*1.65*delta,tempMove.z*1.65*delta);countWalking(Math.hypot(rig.position.x-px,rig.position.z-pz));const turn=readStick(right);if(snapTurnCooldown<=0&&Math.abs(turn.x)>.72){rig.rotation.y-=Math.sign(turn.x)*Math.PI/6;snapTurnCooldown=.38}}
+function getActiveViewDirection(target){
+  // A câmera-base nem sempre reflete a orientação física atual da cabeça no WebXR.
+  let activeCamera=camera;
+  if(renderer.xr.isPresenting){
+    const xrCamera=renderer.xr.getCamera(camera);
+    if(xrCamera&&xrCamera.cameras&&xrCamera.cameras.length)activeCamera=xrCamera.cameras[0];
+    else if(xrCamera)activeCamera=xrCamera;
+  }
+  activeCamera.getWorldDirection(target);
+  target.y=0;
+  if(target.lengthSq()<0.0001){
+    rig.getWorldDirection(target);
+    target.y=0;
+  }
+  if(target.lengthSq()>0.0001)target.normalize();
+  return target;
+}
+function updateXRMovement(delta){
+  if(!renderer.xr.isPresenting||dialogStage>=0||isSitting)return;
+  snapTurnCooldown=Math.max(0,snapTurnCooldown-delta);
+  const {left,right}=getXRSources();
+  const move=readStick(left);
+  getActiveViewDirection(tempForward);
+  tempRight.crossVectors(tempForward,up).normalize();
+  tempMove.set(0,0,0).addScaledVector(tempRight,move.x).addScaledVector(tempForward,-move.y);
+  if(tempMove.lengthSq()>1)tempMove.normalize();
+  const px=rig.position.x,pz=rig.position.z;
+  moveRig(tempMove.x*1.65*delta,tempMove.z*1.65*delta);
+  countWalking(Math.hypot(rig.position.x-px,rig.position.z-pz));
+  const turn=readStick(right);
+  if(snapTurnCooldown<=0&&Math.abs(turn.x)>.72){
+    rig.rotation.y-=Math.sign(turn.x)*Math.PI/6;
+    snapTurnCooldown=.38;
+  }
+}
 function updateDesktopMovement(delta){if(renderer.xr.isPresenting||dialogStage>=0||!loaded||isSitting)return;let side=Number(keyState.has('KeyD')||keyState.has('ArrowRight'))-Number(keyState.has('KeyA')||keyState.has('ArrowLeft'));let forwardInput=Number(keyState.has('KeyW')||keyState.has('ArrowUp'))-Number(keyState.has('KeyS')||keyState.has('ArrowDown'));if(!side&&!forwardInput)return;camera.getWorldDirection(tempForward);tempForward.y=0;tempForward.normalize();tempRight.crossVectors(tempForward,up).normalize();tempMove.set(0,0,0).addScaledVector(tempRight,side).addScaledVector(tempForward,forwardInput);if(tempMove.lengthSq()>1)tempMove.normalize();const px=rig.position.x,pz=rig.position.z;moveRig(tempMove.x*2.3*delta,tempMove.z*2.3*delta);countWalking(Math.hypot(rig.position.x-px,rig.position.z-pz))}
 
 enterVRButton.addEventListener('click',async()=>{
@@ -1309,7 +1343,31 @@ enterVRButton.addEventListener('click',async()=>{
 
 const pointerOrigin=new THREE.Vector3();const pointerDirection=new THREE.Vector3();const pointerQuaternion=new THREE.Quaternion();
 let pointerUpdateAccumulator=0;
-function updateControllerPointers(delta){if(!renderer.xr.isPresenting)return;pointerUpdateAccumulator+=delta;if(pointerUpdateAccumulator<.033)return;pointerUpdateAccumulator=0;for(const controller of controllers){if(controller.userData.handedness!=='right')continue;controller.getWorldPosition(pointerOrigin);controller.getWorldQuaternion(pointerQuaternion);pointerDirection.set(0,0,-1).applyQuaternion(pointerQuaternion).normalize();raycaster.set(pointerOrigin,pointerDirection);raycaster.far=8.5;const hits=raycaster.intersectObjects(interactables,false);const distance=hits.length?Math.min(hits[0].distance,5):5;const line=controller.userData.rayLine;if(line){const attr=line.geometry.getAttribute('position');attr.setXYZ(1,0,0,-distance);attr.needsUpdate=true;line.geometry.computeBoundingSphere()}if(controller.userData.reticle)controller.userData.reticle.position.set(0,0,-distance)}}
+function updateControllerPointers(delta){
+  if(!renderer.xr.isPresenting)return;
+  pointerUpdateAccumulator+=delta;
+  if(pointerUpdateAccumulator<.033)return;
+  pointerUpdateAccumulator=0;
+  for(const controller of controllers){
+    if(controller.userData.handedness!=='right')continue;
+    controller.updateWorldMatrix(true,false);
+    controller.getWorldPosition(pointerOrigin);
+    controller.getWorldQuaternion(pointerQuaternion);
+    pointerDirection.set(0,0,-1).applyQuaternion(pointerQuaternion).normalize();
+    raycaster.set(pointerOrigin,pointerDirection);
+    raycaster.far=8.5;
+    const hits=raycaster.intersectObjects(interactables,false);
+    const distance=hits.length?Math.min(hits[0].distance,5):5;
+    const line=controller.userData.rayLine;
+    if(line){
+      const attr=line.geometry.getAttribute('position');
+      attr.setXYZ(1,0,0,-distance);
+      attr.needsUpdate=true;
+      line.geometry.computeBoundingSphere();
+    }
+    if(controller.userData.reticle)controller.userData.reticle.position.set(0,0,-distance);
+  }
+}
 function animate(){const delta=Math.min(clock.getDelta(),.05);updateCandleLighting(clock.elapsedTime);updateFlameAnimations(delta,clock.elapsedTime);updatePascalFaceAnimation(delta,clock.elapsedTime);updateSmoke(delta,clock.elapsedTime);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers(delta);renderer.render(scene,camera)}
 renderer.setAnimationLoop(animate);
 window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
