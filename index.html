@@ -406,7 +406,8 @@ function addPanorama(){
 }
 function alignHistoricWindows(roomRoot){
   roomRoot.traverse(obj=>{
-    if(obj.name==='Fundo frio exterior da janela')obj.visible=false;
+    const cleanName=(obj.name||'').toLowerCase();
+    if(/paisagem|panorama|cenario|cenário|fundo frio|fundo.*exterior|background|paris 1650/.test(cleanName))obj.visible=false;
     if(obj.name==='Segundo andar - vidros azulados da janela'&&obj.material){
       const orig=Array.isArray(obj.material)?obj.material:[obj.material];
       const translucent=orig.map(old=>{const m=old.clone();m.transparent=true;m.opacity=.24;m.depthWrite=false;if(m.roughness!==undefined)m.roughness=.22;m.side=THREE.DoubleSide;m.needsUpdate=true;return m;});
@@ -439,8 +440,8 @@ function makeParisWindowTexture(){
 function addWindowLandscape(roomRoot){
   // Fundo opaco escuro atrás dos caixilhos: oculta qualquer cenário que venha no GLB/panorama.
   const outsideMat=new THREE.MeshBasicMaterial({color:0x080a0e,side:THREE.DoubleSide,depthWrite:true});
-  const lowerBackdrop=new THREE.Mesh(new THREE.PlaneGeometry(3.42,1.82),outsideMat);
-  lowerBackdrop.name='Fundo externo removido - janela inferior';lowerBackdrop.position.set(0,2.565,-4.70);lowerBackdrop.renderOrder=2;scene.add(lowerBackdrop);
+  const lowerBackdrop=new THREE.Mesh(new THREE.PlaneGeometry(3.85,2.12),outsideMat);
+  lowerBackdrop.name='Fundo externo removido - janela inferior';lowerBackdrop.position.set(0,2.565,-4.57);lowerBackdrop.renderOrder=1;scene.add(lowerBackdrop);
   const upperBackdrop=new THREE.Mesh(new THREE.PlaneGeometry(2.48,2.04),outsideMat);
   upperBackdrop.name='Fundo externo removido - janela superior';upperBackdrop.position.set(0,6.88,-4.70);upperBackdrop.renderOrder=2;scene.add(upperBackdrop);
   const glass=new THREE.Mesh(new THREE.PlaneGeometry(3.22,1.64),new THREE.MeshBasicMaterial({color:0xc6d5d9,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false}));
