@@ -60,10 +60,14 @@ document.body.appendChild(renderer.domElement);
 const rig=new THREE.Group();
 rig.position.set(0,0,3.65);
 scene.add(rig);
+// O deslocamento da vista fica separado do deslocamento do corpo do jogador.
+const viewOffset=new THREE.Group();
+viewOffset.name='Elevação da visão do jogador';
+rig.add(viewOffset);
 const camera=new THREE.PerspectiveCamera(76,window.innerWidth/window.innerHeight,0.05,100);
-camera.position.set(0,1.62,0);
+camera.position.set(0,1.78,0);
 camera.rotation.order='YXZ';
-rig.add(camera);
+viewOffset.add(camera);
 
 // Fim de tarde: pouca luz ambiente e luz solar quente muito suave.
 scene.add(new THREE.HemisphereLight(0x8994ac,0x24160c,0.31));
@@ -415,7 +419,7 @@ function capsuleBetween(parent,name,a,b,radius,material){const A=new THREE.Vecto
 function addPascalCharacter(){
   // Retrato procedural inspirado no retrato atribuído a Pascal por volta de 1650:
   // cabelo castanho-escuro até os ombros, rosto sem barba, casaca escura e gola branca.
-  const p=new THREE.Group();p.name='Blaise_Pascal_interativo';p.position.set(0,0,-1.72);p.rotation.y=Math.PI;p.scale.set(1,1.12,1);scene.add(p);pascalCharacter=p;
+  const p=new THREE.Group();p.name='Blaise_Pascal_interativo';p.position.set(0,0,-1.72);p.rotation.y=Math.PI;scene.add(p);pascalCharacter=p;
   const coat=mat(0x191816,.94),coatEdge=mat(0x302820,.9),breeches=mat(0x292522,.95);
   const skin=mat(0xd0ad8b,.88),skinShade=mat(0xb88f70,.9),hair=mat(0x211711,.96),hairLight=mat(0x34251a,.94);
   const linen=mat(0xe9e0cd,.9),lace=mat(0xf1e9d9,.92),brass=mat(0x9b773e,.4,.5),eye=mat(0x251911,.5),shoe=mat(0x17130f,.88);
@@ -468,7 +472,7 @@ function addPascalCharacter(){
 
 function addInteractionTargets(){
   const invisible=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide});
-  const pascalBox=new THREE.Mesh(new THREE.BoxGeometry(.9,2.18,.62),invisible);pascalBox.name='AlvoDeInteracaoPascal';pascalBox.position.set(0,1.09,-1.72);pascalBox.userData.interaction='pascal';scene.add(pascalBox);interactables.push(pascalBox);
+  const pascalBox=new THREE.Mesh(new THREE.BoxGeometry(.9,1.95,.62),invisible);pascalBox.name='AlvoDeInteracaoPascal';pascalBox.position.set(0,.98,-1.72);pascalBox.userData.interaction='pascal';scene.add(pascalBox);interactables.push(pascalBox);
   const machineBox=new THREE.Mesh(new THREE.BoxGeometry(1.02,.42,.78),invisible);machineBox.name='AlvoDeInteracaoPascalina';machineBox.position.set(0,1.08,-.62);machineBox.userData.interaction='pascalina';scene.add(machineBox);interactables.push(machineBox);
 }
 
@@ -582,7 +586,7 @@ document.addEventListener('pointerlockchange',()=>{pointerLocked=document.pointe
 document.addEventListener('mousemove',e=>{if(!pointerLocked||renderer.xr.isPresenting||dialogStage>=0)return;camera.rotation.y-=e.movementX*.0022;pitch=THREE.MathUtils.clamp(pitch-e.movementY*.0022,-1.42,1.42);camera.rotation.x=pitch});
 document.addEventListener('keydown',e=>{keyState.add(e.code);if(e.code==='Escape'){if(dialogStage>=0)closeDialogue();else if(pointerLocked)document.exitPointerLock?.()}if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});
 document.addEventListener('keyup',e=>keyState.delete(e.code));
-document.querySelector('#resetView').addEventListener('click',()=>{rig.position.set(0,0,3.65);rig.rotation.set(0,0,0);activeFloorY=0;onStairs=false;camera.position.set(0,renderer.xr.isPresenting?0:1.62,0);camera.rotation.set(0,0,0);pitch=0;closeDialogue()});
+document.querySelector('#resetView').addEventListener('click',()=>{rig.position.set(0,0,3.65);rig.rotation.set(0,0,0);activeFloorY=0;onStairs=false;viewOffset.position.y=(renderer.xr.isPresenting&&xrUsesFloorSpace)?0.22:0;camera.position.set(0,renderer.xr.isPresenting?(xrUsesFloorSpace?0:1.62):1.78,0);camera.rotation.set(0,0,0);pitch=0;closeDialogue()});
 
 const controllers=[];
 for(let i=0;i<2;i++){
@@ -618,7 +622,7 @@ enterVRButton.addEventListener('click',async()=>{
     try{if(session&&session.end)await session.end();renderer.xr.setReferenceSpaceType('local');session=await navigator.xr.requestSession('immersive-vr');xrUsesFloorSpace=false;await renderer.xr.setSession(session)}catch(secondError){console.error(secondError);statusEl.textContent='Não foi possível iniciar o VR: '+(secondError.message||secondError);enterVRButton.disabled=false;return}
   }
   xrSession=session;statusEl.textContent='VR ativo. Analógico esquerdo anda; direito gira em passos de 30°.';
-  session.addEventListener('end',()=>{xrSession=null;camera.position.set(0,1.62,0);rig.position.y=0;activeFloorY=0;onStairs=false;enterVRButton.disabled=false;enterVRButton.textContent='Entrar em VR';statusEl.textContent='Sessão VR encerrada. Você pode entrar novamente.';closeDialogue()},{once:true});
+  session.addEventListener('end',()=>{xrSession=null;viewOffset.position.y=0;camera.position.set(0,1.78,0);rig.position.y=0;activeFloorY=0;onStairs=false;enterVRButton.disabled=false;enterVRButton.textContent='Entrar em VR';statusEl.textContent='Sessão VR encerrada. Você pode entrar novamente.';closeDialogue()},{once:true});
   enterVRButton.textContent='VR ativo';
 });
 
@@ -626,8 +630,8 @@ function updateControllerPointers(){if(!renderer.xr.isPresenting)return;for(cons
 function animate(){const delta=Math.min(clock.getDelta(),.05);updateCandleLighting(clock.elapsedTime);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers();renderer.render(scene,camera)}
 renderer.setAnimationLoop(animate);
 window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
-renderer.xr.addEventListener('sessionstart',()=>{camera.position.set(0,xrUsesFloorSpace?0:1.62,0);camera.rotation.set(0,0,0);pitch=0;crosshair.style.opacity='0';document.exitPointerLock?.();});
-renderer.xr.addEventListener('sessionend',()=>{camera.position.set(0,1.62,0);crosshair.style.opacity=pointerLocked?'1':'.45'});
+renderer.xr.addEventListener('sessionstart',()=>{viewOffset.position.y=xrUsesFloorSpace?0.22:0;camera.position.set(0,xrUsesFloorSpace?0:1.62,0);camera.rotation.set(0,0,0);pitch=0;crosshair.style.opacity='0';document.exitPointerLock?.();});
+renderer.xr.addEventListener('sessionend',()=>{viewOffset.position.y=0;camera.position.set(0,1.78,0);crosshair.style.opacity=pointerLocked?'1':'.45'});
 </script>
 </body>
 </html>
