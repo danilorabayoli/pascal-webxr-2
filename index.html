@@ -432,7 +432,6 @@ function createHistoricWindows(roomRoot){
   for(const w of windows){
     const measured=measureWindowOpening(roomRoot,w);
     if(measured){
-      w.cx=measured.cx;w.cy=measured.cy;
       w.width=Math.max(.5,measured.width-.055);
       w.height=Math.max(.5,measured.height-.055);
       console.info(w.name+' ajustada à abertura medida: '+w.width.toFixed(2)+' × '+w.height.toFixed(2)+' m');
@@ -507,71 +506,11 @@ function measureWindowOpening(roomRoot,w){
   return {cx:horizontal.mid,cy:vertical.mid,width:horizontal.width,height:vertical.width};
 }
 function estimateInteriorWallFrame(roomRoot,w){
-  // Mede trechos sólidos que circundam o vão e ajusta o plano à geometria do modelo.
-  roomRoot.updateMatrixWorld(true);
-  const meshes=[];
-  roomRoot.traverse(obj=>{if(obj.isMesh&&obj.visible&&obj.geometry)meshes.push(obj);});
-  const samples=[];
-  for(const side of [-1,1]){
-    const x=w.cx+side*(w.width/2+.14);
-    for(const fy of [-.34,0,.34])samples.push([x,w.cy+fy*w.height]);
-    samples.push([w.cx+side*(w.width/2+.26),w.cy]);
-  }
-  for(const side of [-1,1]){
-    const y=w.cy+side*(w.height/2+.14);
-    for(const fx of [-.38,0,.38])samples.push([w.cx+fx*w.width,y]);
-  }
-
-  const raycaster=new THREE.Raycaster();
-  const normalMatrix=new THREE.Matrix3();
-  const hits=[];
-  for(const [x,y] of samples){
-    raycaster.set(new THREE.Vector3(x,y,.35),new THREE.Vector3(0,0,-1));
-    raycaster.near=0;raycaster.far=12;
-    for(const hit of raycaster.intersectObjects(meshes,false)){
-      if(hit.point.z>-3.4||hit.point.z<-6.25||!hit.face)continue;
-      normalMatrix.getNormalMatrix(hit.object.matrixWorld);
-      const normal=hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
-      if(Math.abs(normal.z)<.72)continue;
-      hits.push({dx:x-w.cx,dy:y-w.cy,z:hit.point.z});
-      break;
-    }
-  }
-  const fitPlane=items=>{
-    if(items.length<3)return null;
-    const mx=items.reduce((a,p)=>a+p.dx,0)/items.length;
-    const my=items.reduce((a,p)=>a+p.dy,0)/items.length;
-    const mz=items.reduce((a,p)=>a+p.z,0)/items.length;
-    let xx=0,yy=0,xy=0,xz=0,yz=0;
-    for(const p of items){
-      const x=p.dx-mx,y=p.dy-my,z=p.z-mz;
-      xx+=x*x;yy+=y*y;xy+=x*y;xz+=x*z;yz+=y*z;
-    }
-    const det=xx*yy-xy*xy;
-    if(Math.abs(det)<1e-5)return {a:0,z:mz};
-    const a=(xz*yy-yz*xy)/det;
-    const b=(yz*xx-xz*xy)/det;
-    return {a,z:mz-a*mx-b*my,b};
-  };
-  let fit=fitPlane(hits);
-  if(fit&&hits.length>=4){
-    const residuals=hits.map(p=>Math.abs(p.z-(fit.a*p.dx+(fit.b||0)*p.dy+fit.z))).sort((a,b)=>a-b);
-    const median=residuals[Math.floor(residuals.length/2)]||0;
-    const limit=Math.max(.09,median*2.5);
-    const inliers=hits.filter(p=>Math.abs(p.z-(fit.a*p.dx+(fit.b||0)*p.dy+fit.z))<=limit);
-    const refined=fitPlane(inliers);
-    if(refined&&inliers.length>=3)fit=refined;
-  }
-  if(!fit||hits.length<3){
-    // Z=-4.914 corresponde ao plano externo que já existia no projeto; evita o antigo fallback -4.57.
-    console.warn('Plano da parede não medido para '+w.name+'; usando Z=-4.914 e mantendo o prumo.');
-    return {z:-4.914,rotationY:0};
-  }
-  // Só gira em torno do eixo vertical: a janela continua aprumada, sem inclinar os montantes.
-  const slope=THREE.MathUtils.clamp(fit.a,-.7,.7);
-  const rotationY=-Math.atan(slope);
-  console.info(w.name+': '+hits.length+' amostras de parede; Z='+fit.z.toFixed(3)+', rotação horizontal='+THREE.MathUtils.radToDeg(rotationY).toFixed(2)+'°');
-  return {z:fit.z,rotationY};
+  // O modelo original posicionava os vãos nestes planos. Não aplicamos rotação
+  // calculada por amostras potencialmente contaminadas por móveis ou faces internas.
+  // Isso mantém montantes e travessas no prumo global e as duas janelas paralelas à parede.
+  const z = w.cy > 4 ? -4.912 : -4.914;
+  return {z,rotationY:0};
 }
 function createHistoricWindow(w,wallFrame){
   const {name,cx,cy,width,height}=w;
