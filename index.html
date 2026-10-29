@@ -249,6 +249,36 @@ function addCeilingChandeliers(){
   }
 }
 
+const smokeEmitters=[];
+const smokeCanvas=document.createElement('canvas');smokeCanvas.width=64;smokeCanvas.height=64;
+const smokeCtx=smokeCanvas.getContext('2d');
+const smokeGrad=smokeCtx.createRadialGradient(32,32,2,32,32,30);
+smokeGrad.addColorStop(0,'rgba(205,201,192,.20)');
+smokeGrad.addColorStop(.5,'rgba(190,187,180,.07)');
+smokeGrad.addColorStop(1,'rgba(170,165,158,0)');
+smokeCtx.fillStyle=smokeGrad;smokeCtx.fillRect(0,0,64,64);
+const smokeMap=new THREE.CanvasTexture(smokeCanvas);
+function createSmokeEmitter(position){
+  const emitter={position:position.clone(),particles:[]};
+  for(let i=0;i<2;i++){
+    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:smokeMap,transparent:true,opacity:0,depthWrite:false}));
+    sprite.position.copy(position);sprite.scale.set(.04,.06,1);scene.add(sprite);
+    emitter.particles.push({sprite,age:Math.random()*1.5,life:2.8});
+  }
+  smokeEmitters.push(emitter);
+}
+function updateSmoke(delta,time){
+  for(const emitter of smokeEmitters)for(const p of emitter.particles){
+    p.age+=delta;
+    if(p.age>=p.life){p.age=0;p.sprite.position.copy(emitter.position);}
+    const t=p.age/p.life;
+    p.sprite.position.y=emitter.position.y+.02+p.age*.09;
+    p.sprite.position.x=emitter.position.x+Math.sin(time+p.age*2)*.012;
+    p.sprite.position.z=emitter.position.z+Math.cos(time*.7+p.age)*.01;
+    p.sprite.material.opacity=Math.sin(Math.PI*t)*.09;
+    const size=.035+t*.08;p.sprite.scale.set(size,size*1.3,1);
+  }
+}
 let nextCandleFlickerUpdate=0;
 function updateCandleLighting(time){
   // Atualiza o efeito de chama em intervalos curtos, não em todos os frames.
@@ -418,6 +448,7 @@ function addSecondFloorFurniture(){
       root.updateMatrixWorld(true);
       const flamePos=root.localToWorld(new THREE.Vector3(cx,1.16,-.035));
       if(cx<0)addCandleLightAt(flamePos,.42,1.65,i*.8+.3);
+      if(cx<0)createSmokeEmitter(flamePos);
     }
     if(i===1){const stand=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.18,12),brass);stand.position.set(.40,.90,.05);root.add(stand);sphere(root,'Pequena esfera de latão',[.40,1.01,.05],[.07,.07,.07],brass);}
     upperBlocks.push({x0:x-w/2-.12,x1:x+w/2+.12,z0:3.30,z1:4.02});
@@ -641,7 +672,7 @@ enterVRButton.addEventListener('click',async()=>{
 
 const pointerOrigin=new THREE.Vector3();const pointerDirection=new THREE.Vector3();const pointerQuaternion=new THREE.Quaternion();
 function updateControllerPointers(){if(!renderer.xr.isPresenting)return;for(const controller of controllers){if(controller.userData.handedness!=='right')continue;controller.getWorldPosition(pointerOrigin);controller.getWorldQuaternion(pointerQuaternion);pointerDirection.set(0,0,-1).applyQuaternion(pointerQuaternion).normalize();raycaster.set(pointerOrigin,pointerDirection);raycaster.far=8.5;const hits=raycaster.intersectObjects(interactables,false);const distance=hits.length?Math.min(hits[0].distance,5):5;const line=controller.userData.rayLine;if(line){const attr=line.geometry.getAttribute('position');attr.setXYZ(1,0,0,-distance);attr.needsUpdate=true;line.geometry.computeBoundingSphere()}if(controller.userData.reticle)controller.userData.reticle.position.set(0,0,-distance)}}
-function animate(){const delta=Math.min(clock.getDelta(),.05);updateCandleLighting(clock.elapsedTime);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers();renderer.render(scene,camera)}
+function animate(){const delta=Math.min(clock.getDelta(),.05);updateCandleLighting(clock.elapsedTime);updateSmoke(delta,clock.elapsedTime);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers();renderer.render(scene,camera)}
 renderer.setAnimationLoop(animate);
 window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
 renderer.xr.addEventListener('sessionstart',()=>{viewOffset.position.y=xrUsesFloorSpace?0.22:0;camera.position.set(0,xrUsesFloorSpace?0:1.62,0);camera.rotation.set(0,0,0);pitch=0;crosshair.style.opacity='0';document.exitPointerLock?.();});
