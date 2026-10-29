@@ -432,8 +432,8 @@ function createHistoricWindows(roomRoot){
   for(const w of windows){
     const measured=measureWindowOpening(roomRoot,w);
     if(measured){
-      w.width=Math.max(.5,measured.width-.055);
-      w.height=Math.max(.5,measured.height-.055);
+      w.width=Math.max(.5,measured.width+.045);
+      w.height=Math.max(.5,measured.height+.045);
       console.info(w.name+' ajustada à abertura medida: '+w.width.toFixed(2)+' × '+w.height.toFixed(2)+' m');
     }else{
       // Quando o GLB não oferece uma borda de vão detectável, amplia o caixilho
@@ -506,11 +506,10 @@ function measureWindowOpening(roomRoot,w){
   return {cx:horizontal.mid,cy:vertical.mid,width:horizontal.width,height:vertical.width};
 }
 function estimateInteriorWallFrame(roomRoot,w){
-  // O modelo original posicionava os vãos nestes planos. Não aplicamos rotação
-  // calculada por amostras potencialmente contaminadas por móveis ou faces internas.
-  // Isso mantém montantes e travessas no prumo global e as duas janelas paralelas à parede.
-  const z = w.cy > 4 ? -4.912 : -4.914;
-  return {z,rotationY:0};
+  // A face interna original do vão está próxima de Z=-4.82 (coordenada usada
+  // pelo vidro da janela inferior no código histórico). O antigo -4.914 recuava
+  // todo o conjunto e deixava um espaço visível entre a moldura e a parede.
+  return {z:-4.82,rotationY:0};
 }
 function createHistoricWindow(w,wallFrame){
   const {name,cx,cy,width,height}=w;
@@ -529,6 +528,16 @@ function createHistoricWindow(w,wallFrame){
   box(group,name+' — montante direito',[width/2-frameT/2,0,frameZ],[frameT,height,frameDepth],wood);
   box(group,name+' — verga superior',[0,height/2-frameT/2,frameZ],[width,frameT,frameDepth],wood);
   box(group,name+' — travessa inferior',[0,-height/2+frameT/2,frameZ],[width+.045,frameT*.94,frameDepth+.025],wood);
+
+  // Guarnição perimetral encostada ao acabamento da parede, com pequeno recobrimento
+  // das bordas do vão para que não reste uma fresta visível ao redor da moldura.
+  const casingT=.065,casingDepth=.026,casingZ=.006;
+  const casingW=width+.14,casingH=height+.14;
+  const casing=mat(0x62412d,.76,.01);
+  box(group,name+' — guarnição externa esquerda',[-casingW/2+casingT/2,0,casingZ],[casingT,casingH,casingDepth],casing);
+  box(group,name+' — guarnição externa direita',[casingW/2-casingT/2,0,casingZ],[casingT,casingH,casingDepth],casing);
+  box(group,name+' — guarnição externa superior',[0,casingH/2-casingT/2,casingZ],[casingW,casingT,casingDepth],casing);
+  box(group,name+' — guarnição externa inferior',[0,-casingH/2+casingT/2,casingZ],[casingW,casingT,casingDepth],casing);
 
   const inset=.032,innerW=width-2*frameT,innerH=height-2*frameT,frontZ=.006;
   box(group,name+' — filete interno esquerdo',[-width/2+frameT+inset/2,0,frontZ],[inset,innerH,.018],woodEdge);
