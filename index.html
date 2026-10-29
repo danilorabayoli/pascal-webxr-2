@@ -181,6 +181,68 @@ function addWallEndCandles(){
 }
 
 
+function addCeilingChandeliers(){
+  // Lustres centrais de velas, um em cada nível, pendurados do teto.
+  const iron=new THREE.MeshStandardMaterial({color:0x30241a,roughness:.72,metalness:.28});
+  const brass=new THREE.MeshStandardMaterial({color:0x96703c,roughness:.42,metalness:.58});
+  const wax=new THREE.MeshStandardMaterial({color:0xe8d8b8,roughness:.95});
+  const flameMat=new THREE.MeshBasicMaterial({color:0xff8d2b});
+  const coreMat=new THREE.MeshBasicMaterial({color:0xffe5a2});
+  const fixtures=[
+    {name:'primeiro andar',ceilingY:4.30,phase:.55},
+    {name:'segundo andar',ceilingY:8.66,phase:2.65}
+  ];
+  for(const fixture of fixtures){
+    const root=new THREE.Group();
+    root.name='Lustre central de velas — '+fixture.name;
+    root.position.set(0,fixture.ceilingY,0);
+    scene.add(root);
+
+    // Roseta de teto, corrente curta e haste central em ferro envelhecido.
+    const canopy=new THREE.Mesh(new THREE.CylinderGeometry(.18,.14,.055,20),brass);
+    canopy.name='Roseta de latão do lustre';canopy.position.y=-.045;root.add(canopy);
+    for(let i=0;i<5;i++){
+      const link=new THREE.Mesh(new THREE.TorusGeometry(.025,.006,6,12),iron);
+      link.name='Elo da corrente do lustre '+i;
+      link.position.set(0,-.11-i*.09,0);
+      link.rotation.x=Math.PI/2;root.add(link);
+    }
+    capsuleBetween(root,'Haste vertical do lustre',[0,-.12,0],[0,-.72,0],.018,iron);
+
+    // Aro horizontal de ferro com aro interior e braços curvos de latão.
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.48,.028,10,48),iron);
+    ring.name='Aro circular do lustre';ring.rotation.x=Math.PI/2;ring.position.y=-.78;root.add(ring);
+    const innerRing=new THREE.Mesh(new THREE.TorusGeometry(.25,.014,8,36),brass);
+    innerRing.name='Aro interior de latão';innerRing.rotation.x=Math.PI/2;innerRing.position.y=-.78;root.add(innerRing);
+    const hub=new THREE.Mesh(new THREE.SphereGeometry(.105,16,12),brass);
+    hub.name='Centro de latão do lustre';hub.position.set(0,-.77,0);root.add(hub);
+
+    const candlePositions=[];
+    const count=6;
+    for(let i=0;i<count;i++){
+      const angle=(i/count)*Math.PI*2;
+      const x=Math.cos(angle)*.39,z=Math.sin(angle)*.39;
+      candlePositions.push([x,z]);
+      capsuleBetween(root,'Braço de latão '+(i+1),[0,-.77,0],[x,-.77,z],.018,brass);
+      const cup=new THREE.Mesh(new THREE.CylinderGeometry(.065,.045,.035,14),brass);
+      cup.name='Prato de latão da vela '+(i+1);cup.position.set(x,-.755,z);root.add(cup);
+      const candle=new THREE.Mesh(new THREE.CylinderGeometry(.043,.05,.245,14),wax);
+      candle.name='Vela do lustre '+(i+1);candle.position.set(x,-.61,z);root.add(candle);
+      const wick=new THREE.Mesh(new THREE.CylinderGeometry(.004,.005,.022,8),iron);
+      wick.name='Pavio do lustre '+(i+1);wick.position.set(x,-.476,z);root.add(wick);
+      const flame=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),flameMat);
+      flame.name='Chama do lustre '+(i+1);flame.scale.set(.024,.052,.024);flame.position.set(x,-.43,z);root.add(flame);
+      const core=new THREE.Mesh(new THREE.SphereGeometry(1,10,8),coreMat);
+      core.name='Núcleo claro da chama '+(i+1);core.scale.set(.010,.027,.011);core.position.set(x,-.44,z-.004);root.add(core);
+    }
+
+    // A fonte central fornece luz prática que realmente ilumina o ambiente.
+    root.updateMatrixWorld(true);
+    const centerLight=root.localToWorld(new THREE.Vector3(0,-.55,0));
+    addCandleLightAt(centerLight,4.25,8.2,fixture.phase);
+  }
+}
+
 function updateCandleLighting(time){
   for(const light of candleLights){
     const phase=light.userData.flickerPhase;
@@ -225,6 +287,7 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   room.updateMatrixWorld(true);
   attachCandleLighting(room);
   addWallEndCandles();
+  addCeilingChandeliers();
   alignHistoricWindows(room);
   addPascalCharacter();
   addInteractionTargets();
