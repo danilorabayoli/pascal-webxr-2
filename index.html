@@ -645,6 +645,7 @@ dialogNextButton.addEventListener('click',()=>{if(dialogStage===2)closeDialogue(
 dialogCancelButton.addEventListener('click',closeDialogue);
 
 renderer.domElement.addEventListener('click',()=>{
+  enableSounds();
   if(!loaded||renderer.xr.isPresenting)return;
   if(dialogStage>=0){advanceDialogue();return}
   if(!pointerLocked){renderer.domElement.requestPointerLock?.();return}
@@ -652,7 +653,7 @@ renderer.domElement.addEventListener('click',()=>{
 });
 document.addEventListener('pointerlockchange',()=>{pointerLocked=document.pointerLockElement===renderer.domElement;crosshair.style.opacity=pointerLocked?'1':'.45'});
 document.addEventListener('mousemove',e=>{if(!pointerLocked||renderer.xr.isPresenting||dialogStage>=0)return;camera.rotation.y-=e.movementX*.0022;pitch=THREE.MathUtils.clamp(pitch-e.movementY*.0022,-1.42,1.42);camera.rotation.x=pitch});
-document.addEventListener('keydown',e=>{keyState.add(e.code);if(e.code==='Escape'){if(dialogStage>=0)closeDialogue();else if(pointerLocked)document.exitPointerLock?.()}if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});
+document.addEventListener('keydown',e=>{enableSounds();keyState.add(e.code);if(e.code==='Escape'){if(dialogStage>=0)closeDialogue();else if(pointerLocked)document.exitPointerLock?.()}if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});
 document.addEventListener('keyup',e=>keyState.delete(e.code));
 document.querySelector('#resetView').addEventListener('click',()=>{rig.position.set(0,0,3.65);rig.rotation.set(0,0,0);activeFloorY=0;onStairs=false;viewOffset.position.y=(renderer.xr.isPresenting&&xrUsesFloorSpace)?0.22:0;camera.position.set(0,renderer.xr.isPresenting?(xrUsesFloorSpace?0:1.62):1.78,0);camera.rotation.set(0,0,0);pitch=0;closeDialogue()});
 
@@ -672,10 +673,11 @@ for(let i=0;i<2;i++){
 
 function readStick(source){if(!source||!source.gamepad)return {x:0,y:0};const a=source.gamepad.axes||[];let x=Number(a[0]||0),y=Number(a[1]||0);if(Math.hypot(x,y)<.04&&a.length>=4&&Math.hypot(Number(a[2]||0),Number(a[3]||0))>.12){x=Number(a[2]||0);y=Number(a[3]||0)}const m=Math.min(Math.hypot(x,y),1);if(m<.15)return {x:0,y:0};const k=(m-.15)/.85;return {x:x/m*k,y:y/m*k}}
 function getXRSources(){const session=renderer.xr.getSession();if(!session)return {left:null,right:null};let left=null,right=null;for(const source of session.inputSources){if(source.handedness==='left')left=source;else if(source.handedness==='right')right=source}return {left,right}}
-function updateXRMovement(delta){if(!renderer.xr.isPresenting||dialogStage>=0)return;snapTurnCooldown=Math.max(0,snapTurnCooldown-delta);const {left,right}=getXRSources();const move=readStick(left);camera.getWorldDirection(tempForward);tempForward.y=0;if(tempForward.lengthSq()>.0001)tempForward.normalize();tempRight.crossVectors(tempForward,up).normalize();tempMove.set(0,0,0).addScaledVector(tempRight,move.x).addScaledVector(tempForward,-move.y);if(tempMove.lengthSq()>1)tempMove.normalize();moveRig(tempMove.x*1.65*delta,tempMove.z*1.65*delta);const turn=readStick(right);if(snapTurnCooldown<=0&&Math.abs(turn.x)>.72){rig.rotation.y-=Math.sign(turn.x)*Math.PI/6;snapTurnCooldown=.38}}
-function updateDesktopMovement(delta){if(renderer.xr.isPresenting||dialogStage>=0||!loaded)return;let side=Number(keyState.has('KeyD')||keyState.has('ArrowRight'))-Number(keyState.has('KeyA')||keyState.has('ArrowLeft'));let forwardInput=Number(keyState.has('KeyW')||keyState.has('ArrowUp'))-Number(keyState.has('KeyS')||keyState.has('ArrowDown'));if(!side&&!forwardInput)return;camera.getWorldDirection(tempForward);tempForward.y=0;tempForward.normalize();tempRight.crossVectors(tempForward,up).normalize();tempMove.set(0,0,0).addScaledVector(tempRight,side).addScaledVector(tempForward,forwardInput);if(tempMove.lengthSq()>1)tempMove.normalize();moveRig(tempMove.x*2.3*delta,tempMove.z*2.3*delta)}
+function updateXRMovement(delta){if(!renderer.xr.isPresenting||dialogStage>=0)return;snapTurnCooldown=Math.max(0,snapTurnCooldown-delta);const {left,right}=getXRSources();const move=readStick(left);camera.getWorldDirection(tempForward);tempForward.y=0;if(tempForward.lengthSq()>.0001)tempForward.normalize();tempRight.crossVectors(tempForward,up).normalize();tempMove.set(0,0,0).addScaledVector(tempRight,move.x).addScaledVector(tempForward,-move.y);if(tempMove.lengthSq()>1)tempMove.normalize();const px=rig.position.x,pz=rig.position.z;moveRig(tempMove.x*1.65*delta,tempMove.z*1.65*delta);countWalking(Math.hypot(rig.position.x-px,rig.position.z-pz));const turn=readStick(right);if(snapTurnCooldown<=0&&Math.abs(turn.x)>.72){rig.rotation.y-=Math.sign(turn.x)*Math.PI/6;snapTurnCooldown=.38}}
+function updateDesktopMovement(delta){if(renderer.xr.isPresenting||dialogStage>=0||!loaded)return;let side=Number(keyState.has('KeyD')||keyState.has('ArrowRight'))-Number(keyState.has('KeyA')||keyState.has('ArrowLeft'));let forwardInput=Number(keyState.has('KeyW')||keyState.has('ArrowUp'))-Number(keyState.has('KeyS')||keyState.has('ArrowDown'));if(!side&&!forwardInput)return;camera.getWorldDirection(tempForward);tempForward.y=0;tempForward.normalize();tempRight.crossVectors(tempForward,up).normalize();tempMove.set(0,0,0).addScaledVector(tempRight,side).addScaledVector(tempForward,forwardInput);if(tempMove.lengthSq()>1)tempMove.normalize();const px=rig.position.x,pz=rig.position.z;moveRig(tempMove.x*2.3*delta,tempMove.z*2.3*delta);countWalking(Math.hypot(rig.position.x-px,rig.position.z-pz))}
 
 enterVRButton.addEventListener('click',async()=>{
+  enableSounds();
   if(!navigator.xr){statusEl.textContent='Este navegador não disponibiliza WebXR. Abra no navegador do Meta Quest 3.';return}
   enterVRButton.disabled=true;statusEl.textContent='Solicitando sessão de realidade virtual…';
   let session=null;
