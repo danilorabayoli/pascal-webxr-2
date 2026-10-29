@@ -261,10 +261,10 @@ smokeCtx.fillStyle=smokeGrad;smokeCtx.fillRect(0,0,64,64);
 const smokeMap=new THREE.CanvasTexture(smokeCanvas);
 function createSmokeEmitter(position){
   const emitter={position:position.clone(),particles:[]};
-  for(let i=0;i<2;i++){
+  for(let i=0;i<4;i++){
     const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:smokeMap,transparent:true,opacity:0,depthWrite:false}));
-    sprite.position.copy(position);sprite.scale.set(.04,.06,1);scene.add(sprite);
-    emitter.particles.push({sprite,age:Math.random()*1.5,life:2.8});
+    sprite.position.copy(position);sprite.scale.set(.055,.075,1);scene.add(sprite);
+    emitter.particles.push({sprite,age:Math.random()*2.2,life:3.2+(i%2)*.45});
   }
   smokeEmitters.push(emitter);
 }
@@ -273,11 +273,11 @@ function updateSmoke(delta,time){
     p.age+=delta;
     if(p.age>=p.life){p.age=0;p.sprite.position.copy(emitter.position);}
     const t=p.age/p.life;
-    p.sprite.position.y=emitter.position.y+.02+p.age*.09;
+    p.sprite.position.y=emitter.position.y+.025+p.age*.12;
     p.sprite.position.x=emitter.position.x+Math.sin(time+p.age*2)*.012;
     p.sprite.position.z=emitter.position.z+Math.cos(time*.7+p.age)*.01;
-    p.sprite.material.opacity=Math.sin(Math.PI*t)*.09;
-    const size=.035+t*.08;p.sprite.scale.set(size,size*1.3,1);
+    p.sprite.material.opacity=Math.sin(Math.PI*t)*.19;
+    const size=.05+t*.13;p.sprite.scale.set(size,size*1.45,1);
   }
 }
 let nextCandleFlickerUpdate=0;
@@ -304,7 +304,7 @@ let xrSession=null;
 let snapTurnCooldown=0;
 const keyState=new Set();
 const interactables=[];
-let soundEngine=null,stepMeter=0;
+let soundEngine=null,stepMeter=0,fireCrackleStarted=false;
 function enableSounds(){
   if(!soundEngine){
     const AudioEngine=window.AudioContext||window.webkitAudioContext;
@@ -315,11 +315,29 @@ function enableSounds(){
       for(let i=0;i<channel.length;i++)channel[i]=(Math.random()*2-1)*.4;
       const fire=soundEngine.createBufferSource();fire.buffer=noiseBuffer;fire.loop=true;
       const filter=soundEngine.createBiquadFilter();filter.type='bandpass';filter.frequency.value=1250;filter.Q.value=.8;
-      const level=soundEngine.createGain();level.gain.value=.008;
+      const level=soundEngine.createGain();level.gain.value=.018;
       fire.connect(filter);filter.connect(level);level.connect(soundEngine.destination);fire.start();
     }
   }
   if(soundEngine&&soundEngine.state==='suspended')soundEngine.resume();
+  if(soundEngine&&!fireCrackleStarted){fireCrackleStarted=true;scheduleFireCrackle();}
+}
+function scheduleFireCrackle(){
+  if(!soundEngine||soundEngine.state==='closed')return;
+  const delay=550+Math.random()*1250;
+  window.setTimeout(()=>{
+    if(!soundEngine||soundEngine.state!=='running'){fireCrackleStarted=false;return;}
+    const t=soundEngine.currentTime;
+    const length=Math.floor(soundEngine.sampleRate*.075);
+    const buffer=soundEngine.createBuffer(1,length,soundEngine.sampleRate);
+    const data=buffer.getChannelData(0);
+    for(let i=0;i<length;i++){const fade=1-i/length;data[i]=(Math.random()*2-1)*fade*fade;}
+    const pop=soundEngine.createBufferSource();pop.buffer=buffer;
+    const high=soundEngine.createBiquadFilter();high.type='bandpass';high.frequency.value=1900+Math.random()*1300;high.Q.value=.7;
+    const envelope=soundEngine.createGain();envelope.gain.setValueAtTime(.0001,t);envelope.gain.exponentialRampToValueAtTime(.10+Math.random()*.08,t+.004);envelope.gain.exponentialRampToValueAtTime(.0001,t+.075);
+    pop.connect(high);high.connect(envelope);envelope.connect(soundEngine.destination);pop.start(t);
+    scheduleFireCrackle();
+  },delay);
 }
 function makeStepSound(){
   if(!soundEngine||soundEngine.state!=='running')return;
