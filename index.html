@@ -437,9 +437,14 @@ function makeParisWindowTexture(){
   const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.needsUpdate=true;return tex;
 }
 function addWindowLandscape(roomRoot){
-  // Mantém apenas os elementos da própria janela; a paisagem externa foi removida.
+  // Fundo opaco escuro atrás dos caixilhos: oculta qualquer cenário que venha no GLB/panorama.
+  const outsideMat=new THREE.MeshBasicMaterial({color:0x080a0e,side:THREE.DoubleSide,depthWrite:true});
+  const lowerBackdrop=new THREE.Mesh(new THREE.PlaneGeometry(3.42,1.82),outsideMat);
+  lowerBackdrop.name='Fundo externo removido - janela inferior';lowerBackdrop.position.set(0,2.565,-4.70);lowerBackdrop.renderOrder=2;scene.add(lowerBackdrop);
+  const upperBackdrop=new THREE.Mesh(new THREE.PlaneGeometry(2.48,2.04),outsideMat);
+  upperBackdrop.name='Fundo externo removido - janela superior';upperBackdrop.position.set(0,6.88,-4.70);upperBackdrop.renderOrder=2;scene.add(upperBackdrop);
   const glass=new THREE.Mesh(new THREE.PlaneGeometry(3.22,1.64),new THREE.MeshBasicMaterial({color:0xc6d5d9,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false}));
-  glass.name='Vidro discreto da janela inferior';glass.position.set(0,2.565,-4.82);glass.renderOrder=5;scene.add(glass);
+  glass.name='Vidro discreto da janela inferior';glass.position.set(0,2.565,-4.66);glass.renderOrder=5;scene.add(glass);
   makeFoldedCurtain('Cortina superior esquerda',-1.04,6.88,-4.48,.43,1.92,0x74433b);
   makeFoldedCurtain('Cortina superior direita',1.04,6.88,-4.48,.43,1.92,0x74433b);
   box(scene,'Varão dourado da janela superior',[0,7.99,-4.50],[2.85,.055,.055],mat(0x876334,.42,.55));
