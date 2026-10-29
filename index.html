@@ -189,13 +189,14 @@ function addCeilingChandeliers(){
   const flameMat=new THREE.MeshBasicMaterial({color:0xff8d2b});
   const coreMat=new THREE.MeshBasicMaterial({color:0xffe5a2});
   const fixtures=[
-    {name:'primeiro andar',ceilingY:4.30,phase:.55},
-    {name:'segundo andar',ceilingY:8.66,phase:2.65}
+    // Deslocados do eixo das vigas centrais para que os lustres fiquem visíveis abaixo do forro.
+    {name:'primeiro andar',ceilingY:4.40,z:.82,phase:.55},
+    {name:'segundo andar',ceilingY:8.63,z:.82,phase:2.65}
   ];
   for(const fixture of fixtures){
     const root=new THREE.Group();
     root.name='Lustre central de velas — '+fixture.name;
-    root.position.set(0,fixture.ceilingY,0);
+    root.position.set(0,fixture.ceilingY,fixture.z);
     scene.add(root);
 
     // Roseta de teto, corrente curta e haste central em ferro envelhecido.
@@ -239,7 +240,7 @@ function addCeilingChandeliers(){
     // A fonte central fornece luz prática que realmente ilumina o ambiente.
     root.updateMatrixWorld(true);
     const centerLight=root.localToWorld(new THREE.Vector3(0,-.55,0));
-    addCandleLightAt(centerLight,4.25,8.2,fixture.phase);
+    addCandleLightAt(centerLight,5.0,8.6,fixture.phase);
   }
 }
 
