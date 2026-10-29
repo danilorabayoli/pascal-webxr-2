@@ -383,6 +383,8 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   addWallEndCandles();
   addCeilingChandeliers();
   alignHistoricWindows(room);
+  addPanorama();
+  createHistoricWindows();
   addPascalCharacter();
   addInteractionTargets();
 
@@ -399,33 +401,101 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   console.error(err);loadingEl.innerHTML='<div><b id="error">Não consegui carregar o modelo 3D.</b><br><br>Confira se a pasta assets está junto de index.html e se o site está em HTTPS.<br><br><button onclick="location.reload()">Tentar novamente</button></div>';statusEl.textContent='Falha ao abrir assets/PASCAL_QUARTO_PARIS_1650.glb';
 });
 
+function addPanorama(){
+  // Usa o panorama histórico já presente no repositório como vista exterior.
+  new THREE.TextureLoader().load('./assets/paris_1650_panorama_cubo.jpg',texture=>{
+    texture.colorSpace=THREE.SRGBColorSpace;
+    texture.mapping=THREE.EquirectangularReflectionMapping;
+    scene.background=texture;
+  },undefined,err=>console.warn('Panorama exterior não carregou; mantendo o fundo atual.',err));
+}
 function alignHistoricWindows(roomRoot){
-  // Remove os objetos da janela do modelo original e componentes sem nome reconhecível.
-  // As áreas-alvo correspondem às aberturas inferior e superior na parede de fundo.
-  roomRoot.updateMatrixWorld(true);
-  const openings=[
-    {minX:-1.95,maxX:1.95,minY:1.35,maxY:3.85},
-    {minX:-1.62,maxX:1.62,minY:5.35,maxY:8.25}
-  ];
+  // Esconde apenas os componentes explicitamente nomeados como antigas janelas,
+  // vidros e fundos externos. Não usa caixas delimitadoras nem esconde paredes.
   roomRoot.traverse(obj=>{
     const name=(obj.name||'').toLowerCase();
-    if(/janela|window|vidro|glass|caixilho|esquadria|cortina|varao|varão|parapeito|fundo frio exterior|paisagem exterior/.test(name)){
-      obj.visible=false;
-      return;
-    }
-    if(!obj.isMesh||!obj.geometry)return;
-    const bounds=new THREE.Box3().setFromObject(obj);
-    const size=bounds.getSize(new THREE.Vector3());
-    // Considere também meshes genéricas cuja caixa se sobrepõe à área da janela.
-    // Exclui paredes inteiras, piso e móveis grandes, mas captura armações e vidros.
-    const nearBackWall=bounds.max.z>-5.85&&bounds.min.z<-4.0&&size.z<1.25;
-    const componentSized=size.x<5.2&&size.y<8.8;
-    const overlapsOpening=openings.some(o=>
-      bounds.max.x>o.minX&&bounds.min.x<o.maxX&&
-      bounds.max.y>o.minY&&bounds.min.y<o.maxY
-    );
-    if(nearBackWall&&componentSized&&overlapsOpening)obj.visible=false;
+    const isWallOrRoom=/parede|\bwall\b|quarto historico|quarto histórico|room shell|estrutura geral/.test(name);
+    const isWindowPart=/janela|\bwindow\b|vidro|\bglass\b|caixilho|esquadria|cortina|varao|varão|parapeito|sash|muntin/.test(name);
+    const isOldBackdrop=/fundo frio exterior da janela|paisagem exterior da janela/.test(name);
+    if(isOldBackdrop||(!isWallOrRoom&&isWindowPart))obj.visible=false;
   });
+}
+function createHistoricWindows(){
+  // Coordenadas e dimensões usadas anteriormente para alinhar as aberturas existentes.
+  // A paisagem é o scene.background; nenhum plano opaco é colocado atrás das janelas.
+  createHistoricWindow('Janela histórica do andar inferior',0,2.565,3.28,1.68);
+  createHistoricWindow('Janela histórica do andar superior',0,6.88,2.28,1.94);
+}
+function createHistoricWindow(name,cx,cy,width,height){
+  const group=new THREE.Group();
+  group.name=name;
+  scene.add(group);
+
+  const frameDepth=.105;
+  const frameT=.125;
+  const muntinT=.052;
+  const frameZ=-4.50;
+  const glassZ=-4.555;
+  const wood=mat(0x493023,.72,.015);
+  const woodEdge=mat(0x745039,.68,.02);
+  const muntin=mat(0x553824,.72,.01);
+  const warmDetail=mat(0x98764c,.58,.18);
+
+  // Quadro exterior: ombreiras, verga e peitoril ligeiramente saliente.
+  box(group,name+' — montante esquerdo',[cx-width/2+frameT/2,cy,frameZ],[frameT,height,frameDepth],wood);
+  box(group,name+' — montante direito',[cx+width/2-frameT/2,cy,frameZ],[frameT,height,frameDepth],wood);
+  box(group,name+' — verga superior',[cx,cy+height/2-frameT/2,frameZ],[width,frameT,frameDepth],wood);
+  box(group,name+' — travessa inferior',[cx,cy-height/2+frameT/2,frameZ],[width+.045,frameT*.94,frameDepth+.025],wood);
+  // Moldura interna em madeira mais quente, com relevo subtil.
+  const inset=.032;
+  const innerW=width-2*frameT;
+  const innerH=height-2*frameT;
+  const frontZ=frameZ+frameDepth/2+.006;
+  box(group,name+' — filete interno esquerdo',[cx-width/2+frameT+inset/2,cy,frontZ],[inset,innerH, .018],woodEdge);
+  box(group,name+' — filete interno direito',[cx+width/2-frameT-inset/2,cy,frontZ],[inset,innerH, .018],woodEdge);
+  box(group,name+' — filete interno superior',[cx,cy+height/2-frameT-inset/2,frontZ],[innerW,inset,.018],woodEdge);
+  box(group,name+' — filete interno inferior',[cx,cy-height/2+frameT+inset/2,frontZ],[innerW,inset,.018],woodEdge);
+
+  // Caixilho clássico dividido em três colunas e três fiadas.
+  const cols=3,rows=3;
+  const cellW=(innerW-(cols-1)*muntinT)/cols;
+  const cellH=(innerH-(rows-1)*muntinT)/rows;
+  for(let c=1;c<cols;c++){
+    const x=cx-width/2+frameT+c*cellW+(c-.5)*muntinT;
+    box(group,name+' — montante do caixilho '+c,[x,cy,frameZ],[muntinT,innerH,frameDepth*.82],muntin);
+  }
+  for(let r=1;r<rows;r++){
+    const y=cy-height/2+frameT+r*cellH+(r-.5)*muntinT;
+    box(group,name+' — travessa do caixilho '+r,[cx,y,frameZ],[innerW,muntinT,frameDepth*.82],muntin);
+  }
+
+  // Vidros com transparência baixa: deixam o panorama existente claramente visível.
+  // Sem transmissão física cara, para manter o projeto leve no Quest 3.
+  const glassMaterial=new THREE.MeshPhysicalMaterial({
+    color:0xeaf1ed,transparent:true,opacity:.085,roughness:.16,metalness:0,
+    side:THREE.DoubleSide,depthWrite:false
+  });
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const pane=new THREE.Mesh(
+        new THREE.PlaneGeometry(Math.max(.05,cellW-.012),Math.max(.05,cellH-.012)),
+        glassMaterial
+      );
+      pane.name=name+' — vidro transparente '+(r+1)+'-'+(c+1);
+      pane.position.set(
+        cx-width/2+frameT+c*(cellW+muntinT)+cellW/2,
+        cy-height/2+frameT+r*(cellH+muntinT)+cellH/2,
+        glassZ
+      );
+      pane.renderOrder=2;
+      group.add(pane);
+    }
+  }
+
+  // Pequenos pormenores metálicos discretos na zona central do peitoril.
+  for(const dx of [-.055,.055]){
+    box(group,name+' — pequeno pino de latão',[cx+dx,cy-height/2+frameT/2,frontZ+.012],[.018,.032,.012],warmDetail);
+  }
 }
 function addInvisibleFurnitureLighting(){
   // Luzes de apoio sob os principais conjuntos de móveis; menos fontes dinâmicas
