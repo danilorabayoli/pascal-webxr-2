@@ -405,13 +405,23 @@ function addPanorama(){
   },undefined,err=>console.warn('Panorama não carregado; usando fundo simples.',err));
 }
 function alignHistoricWindows(roomRoot){
+  // Remove os componentes da janela original, não apenas o fundo atrás dela.
+  roomRoot.updateMatrixWorld(true);
   roomRoot.traverse(obj=>{
-    const cleanName=(obj.name||'').toLowerCase();
-    if(/paisagem|panorama|cenario|cenário|fundo frio|fundo.*exterior|background|paris 1650/.test(cleanName))obj.visible=false;
-    if(obj.name==='Segundo andar - vidros azulados da janela'&&obj.material){
-      const orig=Array.isArray(obj.material)?obj.material:[obj.material];
-      const translucent=orig.map(old=>{const m=old.clone();m.transparent=true;m.opacity=.24;m.depthWrite=false;if(m.roughness!==undefined)m.roughness=.22;m.side=THREE.DoubleSide;m.needsUpdate=true;return m;});
-      obj.material=Array.isArray(obj.material)?translucent:translucent[0];obj.renderOrder=4;
+    const name=(obj.name||'').toLowerCase();
+    if(/janela|window|vidro|glass|caixilho|esquadria|cortina|varao|varão|parapeito|fundo frio exterior|paisagem exterior/.test(name)){
+      obj.visible=false;
+      return;
+    }
+    // Fallback para barras/vidros do GLB que não tenham nomes descritivos:
+    // componentes finos na posição da janela da parede do fundo.
+    if(obj.isMesh){
+      const bounds=new THREE.Box3().setFromObject(obj);
+      const size=bounds.getSize(new THREE.Vector3());
+      const center=bounds.getCenter(new THREE.Vector3());
+      const isWindowPart=center.z>-5.8&&center.z<-4.05&&Math.abs(center.x)<2.15&&
+        center.y>0.85&&center.y<8.15&&size.z<0.42&&size.x<4.5&&size.y<7.6;
+      if(isWindowPart)obj.visible=false;
     }
   });
 }
