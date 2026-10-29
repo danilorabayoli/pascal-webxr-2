@@ -178,7 +178,7 @@ function addWallEndCandles(){
 
         root.updateMatrixWorld(true);
         const flameWorld=root.localToWorld(new THREE.Vector3(0,.20,0));
-        if(end===0&&candleIndex%2===0)addCandleLightAt(flameWorld,0.82,3.0,candleIndex*1.41+.4);
+        if(end===0&&candleIndex%4===0)addCandleLightAt(flameWorld,0.78,2.8,candleIndex*1.41+.4);
         candleIndex++;
       }
     }
@@ -249,13 +249,14 @@ function addCeilingChandeliers(){
   }
 }
 
+let nextCandleFlickerUpdate=0;
 function updateCandleLighting(time){
+  // Atualiza o efeito de chama em intervalos curtos, não em todos os frames.
+  if(time<nextCandleFlickerUpdate)return;
+  nextCandleFlickerUpdate=time+0.085;
   for(const light of candleLights){
     const phase=light.userData.flickerPhase;
-    const flicker=0.90
-      +Math.sin(time*4.2+phase)*0.075
-      +Math.sin(time*9.7+phase*1.73)*0.042
-      +Math.sin(time*15.1+phase*0.61)*0.018;
+    const flicker=0.91+Math.sin(time*4.2+phase)*0.065+Math.sin(time*9.7+phase*1.73)*0.03;
     light.intensity=light.userData.baseIntensity*flicker;
   }
 }
@@ -354,7 +355,7 @@ function addWindowLandscape(roomRoot){
   lower.name='Paisagem exterior da janela do piso térreo';lower.position.set(0,2.565,-4.914);lower.renderOrder=1;scene.add(lower);
   const upper=new THREE.Mesh(new THREE.PlaneGeometry(2.28,1.94),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide,depthWrite:false}));
   upper.name='Paisagem exterior da janela do segundo andar';upper.position.set(0,6.88,-4.912);upper.renderOrder=1;scene.add(upper);
-  const glass=new THREE.Mesh(new THREE.PlaneGeometry(3.22,1.64),new THREE.MeshPhysicalMaterial({color:0xc6d5d9,transparent:true,opacity:.075,roughness:.18,metalness:0,side:THREE.DoubleSide,depthWrite:false}));
+  const glass=new THREE.Mesh(new THREE.PlaneGeometry(3.22,1.64),new THREE.MeshBasicMaterial({color:0xc6d5d9,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false}));
   glass.name='Vidro discreto da janela inferior';glass.position.set(0,2.565,-4.82);glass.renderOrder=5;scene.add(glass);
   makeFoldedCurtain('Cortina superior esquerda',-1.04,6.88,-4.48,.43,1.92,0x74433b);
   makeFoldedCurtain('Cortina superior direita',1.04,6.88,-4.48,.43,1.92,0x74433b);
@@ -375,11 +376,8 @@ function addInvisibleFurnitureLighting(){
   // Luzes de apoio sob os principais conjuntos de móveis; menos fontes dinâmicas
   // reduzem o custo de iluminação por pixel no Quest, mantendo o brilho no piso.
   const placements=[
-    {name:'luz invisível sob a mesa de estudo',position:[0,.10,-.72],color:0xffd1a0,intensity:.62,distance:2.25},
-    {name:'luz invisível sob o móvel lateral esquerdo',position:[-4.84,.09,-.78],color:0xffc58a,intensity:.44,distance:1.8},
-    {name:'luz invisível sob o armário baixo direito',position:[4.66,.09,-3.26],color:0xffc58a,intensity:.46,distance:1.85},
-    {name:'luz invisível sob a biblioteca',position:[5.16,.09,2.50],color:0xffc58a,intensity:.42,distance:1.8},
-    {name:'luz invisível sob os móveis centrais do andar superior',position:[-.05,4.43,3.66],color:0xffd0a0,intensity:.55,distance:2.2}
+    {name:'luz invisível sob a mesa de estudo',position:[0,.10,-.72],color:0xffd1a0,intensity:.52,distance:2.0},
+    {name:'luz invisível sob os móveis centrais do andar superior',position:[-.05,4.43,3.66],color:0xffd0a0,intensity:.46,distance:1.9}
   ];
   for(const placement of placements){
     const light=new THREE.PointLight(placement.color,placement.intensity,placement.distance,2);
