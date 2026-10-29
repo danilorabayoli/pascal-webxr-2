@@ -399,77 +399,33 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   console.error(err);loadingEl.innerHTML='<div><b id="error">Não consegui carregar o modelo 3D.</b><br><br>Confira se a pasta assets está junto de index.html e se o site está em HTTPS.<br><br><button onclick="location.reload()">Tentar novamente</button></div>';statusEl.textContent='Falha ao abrir assets/PASCAL_QUARTO_PARIS_1650.glb';
 });
 
-function addPanorama(){
-  new THREE.TextureLoader().load('./assets/paris_1650_panorama_cubo.jpg',texture=>{
-    texture.colorSpace=THREE.SRGBColorSpace;texture.mapping=THREE.EquirectangularReflectionMapping;scene.background=texture;
-  },undefined,err=>console.warn('Panorama não carregado; usando fundo simples.',err));
-}
 function alignHistoricWindows(roomRoot){
-  // Remove os componentes da janela original, não apenas o fundo atrás dela.
+  // Remove os objetos da janela do modelo original e componentes sem nome reconhecível.
+  // As áreas-alvo correspondem às aberturas inferior e superior na parede de fundo.
   roomRoot.updateMatrixWorld(true);
+  const openings=[
+    {minX:-1.95,maxX:1.95,minY:1.35,maxY:3.85},
+    {minX:-1.62,maxX:1.62,minY:5.35,maxY:8.25}
+  ];
   roomRoot.traverse(obj=>{
     const name=(obj.name||'').toLowerCase();
     if(/janela|window|vidro|glass|caixilho|esquadria|cortina|varao|varão|parapeito|fundo frio exterior|paisagem exterior/.test(name)){
       obj.visible=false;
       return;
     }
-    // Fallback para barras/vidros do GLB que não tenham nomes descritivos:
-    // componentes finos na posição da janela da parede do fundo.
-    if(obj.isMesh){
-      const bounds=new THREE.Box3().setFromObject(obj);
-      const size=bounds.getSize(new THREE.Vector3());
-      const center=bounds.getCenter(new THREE.Vector3());
-      const isWindowPart=center.z>-5.8&&center.z<-4.05&&Math.abs(center.x)<2.15&&
-        center.y>0.85&&center.y<8.15&&size.z<0.42&&size.x<4.5&&size.y<7.6;
-      if(isWindowPart)obj.visible=false;
-    }
+    if(!obj.isMesh||!obj.geometry)return;
+    const bounds=new THREE.Box3().setFromObject(obj);
+    const size=bounds.getSize(new THREE.Vector3());
+    // Considere também meshes genéricas cuja caixa se sobrepõe à área da janela.
+    // Exclui paredes inteiras, piso e móveis grandes, mas captura armações e vidros.
+    const nearBackWall=bounds.max.z>-5.85&&bounds.min.z<-4.0&&size.z<1.25;
+    const componentSized=size.x<5.2&&size.y<8.8;
+    const overlapsOpening=openings.some(o=>
+      bounds.max.x>o.minX&&bounds.min.x<o.maxX&&
+      bounds.max.y>o.minY&&bounds.min.y<o.maxY
+    );
+    if(nearBackWall&&componentSized&&overlapsOpening)obj.visible=false;
   });
-}
-function makeParisWindowTexture(){
-  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=512;const ctx=canvas.getContext('2d');
-  const sky=ctx.createLinearGradient(0,0,0,512);sky.addColorStop(0,'#374e68');sky.addColorStop(.42,'#8295a2');sky.addColorStop(.72,'#d5bc91');sky.addColorStop(1,'#b5a078');
-  ctx.fillStyle=sky;ctx.fillRect(0,0,1024,512);
-  const sun=ctx.createRadialGradient(740,150,5,740,150,170);sun.addColorStop(0,'rgba(255,230,177,.65)');sun.addColorStop(1,'rgba(255,230,177,0)');ctx.fillStyle=sun;ctx.fillRect(520,0,360,330);
-  ctx.fillStyle='rgba(245,232,204,.22)';
-  for(let i=0;i<7;i++){ctx.beginPath();ctx.ellipse(95+i*145,92+(i%3)*31,75+(i%2)*32,14+(i%3)*5,-.08,0,Math.PI*2);ctx.fill();}
-  ctx.fillStyle='#697c70';ctx.beginPath();ctx.moveTo(0,310);for(let x=0;x<=1024;x+=64)ctx.lineTo(x,292+Math.sin(x*.012)*15+Math.cos(x*.027)*8);ctx.lineTo(1024,390);ctx.lineTo(0,390);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#667d86';ctx.beginPath();ctx.moveTo(0,347);ctx.bezierCurveTo(230,326,360,374,540,351);ctx.bezierCurveTo(740,329,840,366,1024,342);ctx.lineTo(1024,398);ctx.bezierCurveTo(800,422,680,389,500,413);ctx.bezierCurveTo(290,432,160,392,0,419);ctx.closePath();ctx.fill();
-  ctx.strokeStyle='rgba(228,216,181,.35)';ctx.lineWidth=3;for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(50+i*190,372+i%2*7);ctx.lineTo(190+i*165,367+i%3*6);ctx.stroke();}
-  for(let i=0;i<22;i++){
-    const x=i*49-12,w=32+(i%4)*7,h=53+(i%5)*14,base=430+(i%3)*7;
-    ctx.fillStyle=['#5c5147','#786454','#84715e','#675b52'][i%4];ctx.fillRect(x,base-h,w,h);
-    ctx.fillStyle=['#493d36','#5b473a','#6c5140'][i%3];ctx.beginPath();ctx.moveTo(x-5,base-h);ctx.lineTo(x+w/2,base-h-21-(i%3)*5);ctx.lineTo(x+w+5,base-h);ctx.closePath();ctx.fill();
-    ctx.fillStyle='#443a32';ctx.fillRect(x+w*.68,base-h-28,w*.13,19);ctx.fillStyle='rgba(224,203,158,.55)';
-    for(let row=0;row<3;row++)for(let col=0;col<2;col++)ctx.fillRect(x+5+col*12,base-h+13+row*13,5,7);
-  }
-  ctx.fillStyle='#66584b';ctx.fillRect(250,266,36,112);ctx.beginPath();ctx.moveTo(242,266);ctx.lineTo(268,218);ctx.lineTo(294,266);ctx.closePath();ctx.fill();
-  ctx.fillRect(685,248,31,124);ctx.beginPath();ctx.moveTo(678,248);ctx.lineTo(700,207);ctx.lineTo(723,248);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#a18a6c';ctx.fillRect(0,435,1024,77);ctx.fillStyle='rgba(43,39,33,.26)';ctx.fillRect(0,430,1024,9);
-  const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.needsUpdate=true;return tex;
-}
-function addWindowLandscape(roomRoot){
-  // Fundo opaco escuro atrás dos caixilhos: oculta qualquer cenário que venha no GLB/panorama.
-  const outsideMat=new THREE.MeshBasicMaterial({color:0x080a0e,side:THREE.DoubleSide,depthWrite:true});
-  const lowerBackdrop=new THREE.Mesh(new THREE.PlaneGeometry(3.85,2.12),outsideMat);
-  lowerBackdrop.name='Fundo externo removido - janela inferior';lowerBackdrop.position.set(0,2.565,-4.57);lowerBackdrop.renderOrder=1;scene.add(lowerBackdrop);
-  const upperBackdrop=new THREE.Mesh(new THREE.PlaneGeometry(2.48,2.04),outsideMat);
-  upperBackdrop.name='Fundo externo removido - janela superior';upperBackdrop.position.set(0,6.88,-4.70);upperBackdrop.renderOrder=2;scene.add(upperBackdrop);
-  const glass=new THREE.Mesh(new THREE.PlaneGeometry(3.22,1.64),new THREE.MeshBasicMaterial({color:0xc6d5d9,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false}));
-  glass.name='Vidro discreto da janela inferior';glass.position.set(0,2.565,-4.66);glass.renderOrder=5;scene.add(glass);
-  makeFoldedCurtain('Cortina superior esquerda',-1.04,6.88,-4.48,.43,1.92,0x74433b);
-  makeFoldedCurtain('Cortina superior direita',1.04,6.88,-4.48,.43,1.92,0x74433b);
-  box(scene,'Varão dourado da janela superior',[0,7.99,-4.50],[2.85,.055,.055],mat(0x876334,.42,.55));
-  for(const x of [-1.36,1.36])sphere(scene,'Ponteira do varão superior',[x,7.99,-4.50],[.07,.07,.07],mat(0x9b773e,.4,.55));
-}
-function makeFoldedCurtain(name,centerX,centerY,z,width,height,color){
-  const cols=24,vertices=[],uvs=[],indices=[];
-  for(let i=0;i<=cols;i++){
-    const u=i/cols,x=centerX+(u-.5)*width,fold=Math.cos(u*Math.PI*8)*.025;
-    vertices.push(x,centerY+height/2,z+fold,x,centerY-height/2,z+fold);uvs.push(u,1,u,0);
-    if(i<cols){const a=i*2,b=a+1,c=a+2,d=a+3;indices.push(a,b,c,b,d,c);}
-  }
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));g.setIndex(indices);g.computeVertexNormals();
-  const curtain=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color,roughness:.95,side:THREE.DoubleSide}));curtain.name=name;scene.add(curtain);return curtain;
 }
 function addInvisibleFurnitureLighting(){
   // Luzes de apoio sob os principais conjuntos de móveis; menos fontes dinâmicas
