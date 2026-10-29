@@ -856,42 +856,72 @@ function sphere(parent,name,pos,size,material){const mesh=new THREE.Mesh(new THR
 function capsuleBetween(parent,name,a,b,radius,material){const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),dir=B.clone().sub(A);const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,dir.length(),12),material);mesh.name=name;mesh.position.copy(A).add(B).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());parent.add(mesh);sphere(parent,name+' joint A',a,[radius,radius,radius],material);sphere(parent,name+' joint B',b,[radius,radius,radius],material)}
 
 function makePascalinaDialTexture(){
-  const canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;
+  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=512;
   const ctx=canvas.getContext('2d');
-  const cx=128,cy=128;
-  ctx.clearRect(0,0,256,256);
-  ctx.fillStyle='#c9a361';ctx.beginPath();ctx.arc(cx,cy,120,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#6f4c24';ctx.beginPath();ctx.arc(cx,cy,113,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#e2c58c';ctx.beginPath();ctx.arc(cx,cy,106,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='#f6e2b3';ctx.lineWidth=3;ctx.beginPath();ctx.arc(cx,cy,101,0,Math.PI*2);ctx.stroke();
+  const cx=256,cy=256;
+  ctx.clearRect(0,0,512,512);
+  ctx.fillStyle='#79552b';ctx.beginPath();ctx.arc(cx,cy,246,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#bd9655';ctx.beginPath();ctx.arc(cx,cy,235,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#e7d5ad';ctx.beginPath();ctx.arc(cx,cy,220,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#fff0ca';ctx.lineWidth=5;ctx.beginPath();ctx.arc(cx,cy,211,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='#87602e';ctx.lineWidth=3;ctx.beginPath();ctx.arc(cx,cy,177,0,Math.PI*2);ctx.stroke();
+  for(let i=0;i<100;i++){
+    const a=(i/100)*Math.PI*2-Math.PI/2;
+    const major=i%10===0,mid=i%5===0;
+    const inner=major?180:mid?188:196,outer=major?207:mid?203:200;
+    ctx.strokeStyle=major?'#56371b':'#9b7743';ctx.lineWidth=major?4:mid?3:1.5;
+    ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*inner,cy+Math.sin(a)*inner);ctx.lineTo(cx+Math.cos(a)*outer,cy+Math.sin(a)*outer);ctx.stroke();
+  }
   for(let i=0;i<10;i++){
     const a=(i/10)*Math.PI*2-Math.PI/2;
-    const inner=79,outer=92;
-    ctx.strokeStyle='#8a642e';ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*inner,cy+Math.sin(a)*inner);ctx.lineTo(cx+Math.cos(a)*outer,cy+Math.sin(a)*outer);ctx.stroke();
-    const tx=cx+Math.cos(a)*65,ty=cy+Math.sin(a)*65;
-    ctx.fillStyle='#3b291b';ctx.font='bold 27px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    const tx=cx+Math.cos(a)*145,ty=cy+Math.sin(a)*145;
+    ctx.fillStyle='#352317';ctx.font='bold 54px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText(String(i),tx,ty);
   }
-  ctx.fillStyle='#5a1f16';ctx.beginPath();ctx.moveTo(cx-6,cy-89);ctx.lineTo(cx+6,cy-89);ctx.lineTo(cx,cy-69);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#80602c';ctx.beginPath();ctx.arc(cx,cy,26,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#e8ce99';ctx.beginPath();ctx.arc(cx,cy,17,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#6a2418';ctx.beginPath();ctx.moveTo(cx-11,cy-199);ctx.lineTo(cx+11,cy-199);ctx.lineTo(cx,cy-163);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#704b21';ctx.beginPath();ctx.arc(cx,cy,48,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#e6d2a8';ctx.beginPath();ctx.arc(cx,cy,34,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#5a3a1e';ctx.beginPath();ctx.arc(cx,cy,10,0,Math.PI*2);ctx.fill();
   const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=1;return texture;
 }
 function makePascalinaRegisterTexture(){
-  const canvas=document.createElement('canvas');canvas.width=768;canvas.height=120;
+  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=160;
   const ctx=canvas.getContext('2d');
-  ctx.fillStyle='#2b2116';ctx.fillRect(0,0,768,120);
-  ctx.strokeStyle='#bd9654';ctx.lineWidth=5;ctx.strokeRect(3,3,762,114);
-  const digits='0000000';
+  ctx.fillStyle='#21170f';ctx.fillRect(0,0,1024,160);
+  ctx.strokeStyle='#c39a59';ctx.lineWidth=7;ctx.strokeRect(4,4,1016,152);
+  ctx.strokeStyle='#5b3c20';ctx.lineWidth=2;ctx.strokeRect(13,13,998,134);
   for(let i=0;i<7;i++){
-    const x=18+i*105;
-    ctx.fillStyle='#e6d7b6';ctx.fillRect(x,18,84,84);
-    ctx.strokeStyle='#9b7139';ctx.lineWidth=3;ctx.strokeRect(x,18,84,84);
-    ctx.fillStyle='#241a12';ctx.font='bold 61px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(digits[i],x+42,59);
+    const x=23+i*140;
+    ctx.fillStyle='#d9c49a';ctx.fillRect(x,23,112,112);
+    ctx.strokeStyle='#79542b';ctx.lineWidth=4;ctx.strokeRect(x,23,112,112);
+    ctx.strokeStyle='#f1dfb8';ctx.lineWidth=2;ctx.strokeRect(x+5,28,102,102);
+    ctx.fillStyle='#2b1d12';ctx.font='bold 82px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('0',x+56,80);
   }
-  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;return texture;
+  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=1;return texture;
+}
+function makePascalinaWoodTexture(){
+  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=256;
+  const ctx=canvas.getContext('2d');
+  const gradient=ctx.createLinearGradient(0,0,0,256);
+  gradient.addColorStop(0,'#67432a');gradient.addColorStop(.48,'#4b2d1c');gradient.addColorStop(1,'#2f1d13');
+  ctx.fillStyle=gradient;ctx.fillRect(0,0,512,256);
+  // Veios discretos e irregulares, gerados uma única vez para manter baixo custo em VR.
+  for(let i=0;i<95;i++){
+    const y=(i*37)%256,amp=1+(i%4)*.7;
+    ctx.beginPath();ctx.moveTo(0,y);
+    for(let x=0;x<=512;x+=32)ctx.lineTo(x,y+Math.sin(x*.018+i*1.7)*amp+Math.sin(x*.047+i)*.55);
+    ctx.strokeStyle=i%5===0?'rgba(205,151,91,.17)':'rgba(12,7,4,.13)';
+    ctx.lineWidth=i%7===0?2:1;ctx.stroke();
+  }
+  for(let i=0;i<420;i++){
+    const x=(i*73)%512,y=(i*47)%256;
+    ctx.fillStyle=i%2?'rgba(235,188,125,.045)':'rgba(12,7,4,.055)';
+    ctx.fillRect(x,y,1+(i%3),1);
+  }
+  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+  texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.RepeatWrapping;
+  texture.repeat.set(1,1);texture.anisotropy=1;return texture;
 }
 function addPascalinaUpgrade(roomRoot){
   // Substitui apenas a Pascalina antiga identificável e suas pequenas peças na região do instrumento.
@@ -911,16 +941,22 @@ function addPascalinaUpgrade(roomRoot){
   });
 
   const machine=new THREE.Group();machine.name='Pascalina histórica aprimorada';machine.position.set(0,1.035,-.62);scene.add(machine);
-  const walnut=mat(0x4b2d1c,.72,.025);
-  const darkWalnut=mat(0x28180f,.8,.02);
+  const woodMap=makePascalinaWoodTexture();
+  const walnut=new THREE.MeshStandardMaterial({color:0xffffff,map:woodMap,roughness:.84,metalness:0});
+  const darkWalnut=mat(0x28180f,.88,.015);
   const brass=mat(0xa77b36,.4,.62);
   const brassDark=mat(0x704b21,.48,.58);
   const iron=mat(0x30241a,.55,.45);
   const cream=mat(0xe0cfaa,.62,.08);
 
   // Caixa artesanal de nogueira com plinto e cantoneiras de latão.
-  box(machine,'Plinto de madeira da Pascalina',[0,-.12,0],[.94,.038,.56],darkWalnut);
+  box(machine,'Plinto de madeira da Pascalina',[0,-.12,0],[.96,.042,.58],darkWalnut);
   box(machine,'Corpo de nogueira da Pascalina',[0,-.005,0],[.90,.20,.52],walnut);
+  // Filetes de madeira escura delimitam a caixa sem alterar seu volume ou posição.
+  box(machine,'Filete superior traseiro de nogueira',[0,.101,-.244],[.88,.018,.025],darkWalnut);
+  box(machine,'Filete superior frontal de nogueira',[0,.101,.244],[.88,.018,.025],darkWalnut);
+  box(machine,'Filete lateral esquerdo de nogueira',[-.438,.101,0],[.025,.018,.47],darkWalnut);
+  box(machine,'Filete lateral direito de nogueira',[.438,.101,0],[.025,.018,.47],darkWalnut);
   box(machine,'Faixa frontal de latão',[0,-.005,.266],[.84,.155,.018],brassDark);
   box(machine,'Moldura escura do registro',[0,-.005,.278],[.78,.128,.012],iron);
 
@@ -943,12 +979,19 @@ function addPascalinaUpgrade(roomRoot){
     hub.name='Eixo central do mostrador '+(i+1);hub.position.set(x,.136,-.01);machine.add(hub);
   }
 
-  // Nervuras metálicas e rebites nos quatro cantos da caixa.
+  // Cantoneiras de latão escurecido com parafusos de fenda visíveis.
   for(const x of [-.414,.414]){
     for(const z of [-.235,.235]){
       const bracket=box(machine,'Cantoneira de latão',[x,.012,z],[.045,.17,.028],brass);
       bracket.rotation.z=x<0?-.08:.08;
-      sphere(machine,'Rebite da cantoneira',[x,-.048,z+.018],[.012,.012,.008],cream);
+      sphere(machine,'Cabeça do parafuso da cantoneira',[x,-.048,z+.018],[.013,.013,.009],cream);
+      box(machine,'Fenda do parafuso',[x,-.048,z+.027],[.012,.002,.002],iron);
+    }
+  }
+  // Rebites pequenos ao longo das laterais, todos presos à própria carcaça.
+  for(const side of [-1,1]){
+    for(const z of [-.15,0,.15]){
+      sphere(machine,'Rebite lateral de latão',[side*.452,-.025,z],[.009,.009,.009],brass);
     }
   }
 
@@ -967,10 +1010,12 @@ function addPascalinaUpgrade(roomRoot){
 
   // Pequena manivela lateral com pegador de madeira.
   const crankX=.463;
-  const crankStem=new THREE.Mesh(new THREE.CylinderGeometry(.009,.009,.085,10),brass);
+  const crankStem=new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,.10,12),brass);
   crankStem.name='Eixo da manivela';crankStem.rotation.z=Math.PI/2;crankStem.position.set(crankX,-.045,.015);machine.add(crankStem);
-  const crankArm=box(machine,'Braço da manivela',[.505,-.045,.015],[.07,.09,.022],brass);
+  const crankArm=box(machine,'Braço da manivela',[.505,-.045,.015],[.075,.095,.025],brass);
   crankArm.rotation.z=-.35;
+  const crankHub=new THREE.Mesh(new THREE.CylinderGeometry(.026,.026,.018,16),brassDark);
+  crankHub.name='Cubo circular da manivela';crankHub.rotation.z=Math.PI/2;crankHub.position.set(.477,-.045,.015);machine.add(crankHub);
   sphere(machine,'Pegador escuro da manivela',[.523,-.095,.016],[.024,.034,.024],darkWalnut);
 
   // Inscrição discreta em placa de latão, em vez de letras modernas.
@@ -1285,18 +1330,26 @@ for(let i=0;i<2;i++){
 function readStick(source){if(!source||!source.gamepad)return {x:0,y:0};const a=source.gamepad.axes||[];let x=Number(a[0]||0),y=Number(a[1]||0);if(Math.hypot(x,y)<.04&&a.length>=4&&Math.hypot(Number(a[2]||0),Number(a[3]||0))>.12){x=Number(a[2]||0);y=Number(a[3]||0)}const m=Math.min(Math.hypot(x,y),1);if(m<.15)return {x:0,y:0};const k=(m-.15)/.85;return {x:x/m*k,y:y/m*k}}
 function getXRSources(){const session=renderer.xr.getSession();if(!session)return {left:null,right:null};let left=null,right=null;for(const source of session.inputSources){if(source.handedness==='left')left=source;else if(source.handedness==='right')right=source}return {left,right}}
 function getActiveViewDirection(target){
-  // A câmera-base nem sempre reflete a orientação física atual da cabeça no WebXR.
+  // Atualiza a hierarquia rig -> offset -> câmera antes de ler a pose real do headset.
+  rig.updateWorldMatrix(true,true);
   let activeCamera=camera;
   if(renderer.xr.isPresenting){
     const xrCamera=renderer.xr.getCamera(camera);
-    if(xrCamera&&xrCamera.cameras&&xrCamera.cameras.length)activeCamera=xrCamera.cameras[0];
-    else if(xrCamera)activeCamera=xrCamera;
+    if(xrCamera){
+      xrCamera.updateMatrixWorld(true);
+      if(xrCamera.cameras&&xrCamera.cameras.length){
+        // A câmera central é preferível para locomoção; as câmeras dos olhos são apenas renderização.
+        activeCamera=xrCamera;
+      }else activeCamera=xrCamera;
+    }
   }
   activeCamera.getWorldDirection(target);
   target.y=0;
   if(target.lengthSq()<0.0001){
-    rig.getWorldDirection(target);
-    target.y=0;
+    camera.getWorldDirection(target);target.y=0;
+  }
+  if(target.lengthSq()<0.0001){
+    rig.getWorldDirection(target);target.y=0;
   }
   if(target.lengthSq()>0.0001)target.normalize();
   return target;
@@ -1350,7 +1403,7 @@ function updateControllerPointers(delta){
   pointerUpdateAccumulator=0;
   for(const controller of controllers){
     if(controller.userData.handedness!=='right')continue;
-    controller.updateWorldMatrix(true,false);
+    controller.updateWorldMatrix(true,true);
     controller.getWorldPosition(pointerOrigin);
     controller.getWorldQuaternion(pointerQuaternion);
     pointerDirection.set(0,0,-1).applyQuaternion(pointerQuaternion).normalize();
