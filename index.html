@@ -64,10 +64,43 @@ camera.position.set(0,1.62,0);
 camera.rotation.order='YXZ';
 rig.add(camera);
 
-scene.add(new THREE.HemisphereLight(0xd7dcff,0x38281a,1.35));
-const keyLight=new THREE.DirectionalLight(0xffd6a0,1.7);keyLight.position.set(-3,7,4);scene.add(keyLight);
-const fillLight=new THREE.DirectionalLight(0x7c98d8,0.45);fillLight.position.set(4,5,-4);scene.add(fillLight);
-for(const [x,y,z,color,intensity,range] of [[0,2.9,-1.5,0xffc37b,1.0,6],[-3.4,2.4,0.2,0xffbf71,.52,4],[3.8,2.5,-2.1,0xffc37b,.48,4],[0,5.4,0,0xffc37b,.38,7]]){const l=new THREE.PointLight(color,intensity,range,2);l.position.set(x,y,z);scene.add(l)}
+// Iluminação de fim de tarde: ambiente frio e discreto, preenchido por luz quente de velas.
+scene.add(new THREE.HemisphereLight(0x9aa8c7,0x2b1b11,0.50));
+const duskLight=new THREE.DirectionalLight(0xffbd83,0.24);
+duskLight.position.set(-3,7,-4);
+scene.add(duskLight);
+const fillLight=new THREE.DirectionalLight(0x7787ae,0.13);
+fillLight.position.set(4,5,-4);
+scene.add(fillLight);
+
+// Luzes de vela distribuídas pelo estudo e pela galeria superior.
+// A pequena oscilação de intensidade simula a chama sem adicionar objetos à cena.
+const candleLights=[];
+function addCandleLight(x,y,z,intensity,range,phase){
+  const light=new THREE.PointLight(0xffb35b,intensity,range,2);
+  light.position.set(x,y,z);
+  light.userData.baseIntensity=intensity;
+  light.userData.flickerPhase=phase;
+  scene.add(light);
+  candleLights.push(light);
+}
+addCandleLight(0,2.45,-1.35,1.22,4.8,0.2);
+addCandleLight(-3.4,2.25,0.2,0.92,4.1,1.4);
+addCandleLight(3.7,2.25,-2.0,0.88,4.2,2.7);
+addCandleLight(-3.1,5.15,2.25,0.78,4.2,0.9);
+addCandleLight(3.1,5.15,2.25,0.78,4.2,2.2);
+addCandleLight(0,5.45,-0.4,0.76,4.6,3.5);
+
+function updateCandleLighting(time){
+  for(const light of candleLights){
+    const phase=light.userData.flickerPhase;
+    const flicker=0.92
+      +Math.sin(time*4.2+phase)*0.045
+      +Math.sin(time*9.7+phase*1.73)*0.025
+      +Math.sin(time*15.1+phase*0.61)*0.012;
+    light.intensity=light.userData.baseIntensity*flicker;
+  }
+}
 
 let room=null;
 let pascalCharacter=null;
@@ -413,7 +446,7 @@ enterVRButton.addEventListener('click',async()=>{
 });
 
 function updateControllerPointers(){if(!renderer.xr.isPresenting)return;for(const controller of controllers){if(controller.userData.handedness!=='right')continue;const origin=controller.getWorldPosition(new THREE.Vector3());const direction=new THREE.Vector3(0,0,-1).applyQuaternion(controller.getWorldQuaternion(new THREE.Quaternion())).normalize();raycaster.set(origin,direction);raycaster.far=8.5;const hits=raycaster.intersectObjects(interactables,false);const distance=hits.length?Math.min(hits[0].distance,5):5;const line=controller.userData.rayLine;if(line)line.geometry.setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-distance)]);if(controller.userData.reticle)controller.userData.reticle.position.set(0,0,-distance)}}
-function animate(){const delta=Math.min(clock.getDelta(),.05);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers();renderer.render(scene,camera)}
+function animate(){const delta=Math.min(clock.getDelta(),.05);updateCandleLighting(clock.elapsedTime);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers();renderer.render(scene,camera)}
 renderer.setAnimationLoop(animate);
 window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
 renderer.xr.addEventListener('sessionstart',()=>{camera.position.set(0,xrUsesFloorSpace?0:1.62,0);camera.rotation.set(0,0,0);pitch=0;crosshair.style.opacity='0';document.exitPointerLock?.();});
