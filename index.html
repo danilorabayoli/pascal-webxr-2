@@ -129,7 +129,9 @@ function attachCandleLighting(roomRoot){
   const flames=[];
   roomRoot.traverse(obj=>{
     const name=(obj.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-    if(name.includes('chama da vela'))flames.push(obj);
+    // O GLB usa nomes variados para chamas sobre mesas, escrivaninhas e candelabros.
+    // Reconhece termos de fogo/chama sem animar o corpo de cera da vela.
+    if(/chama|flame|fire|fogo|flamme|fiamma|flammen|flam/.test(name))flames.push(obj);
   });
   flames.forEach((flame,index)=>{
     registerAnimatedFlame(flame,index*1.81+.37);
@@ -153,6 +155,18 @@ function attachCandleLighting(roomRoot){
     addCandleLightAt(new THREE.Vector3(1.08,1.42,-1.18),3.3,4.6,0.35);
     addCandleLightAt(new THREE.Vector3(-1.05,1.40,-0.28),3.0,4.6,2.22);
   }
+}
+function registerRemainingSceneFlames(){
+  // Varredura final: captura chamas do GLB (inclusive velas de mesas dos dois andares)
+  // ou de móveis procedurais que não tenham sido registrados nos seus criadores.
+  let fallbackPhase=5.7;
+  scene.traverse(obj=>{
+    const name=(obj.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    if(/chama|flame|fire|fogo|flamme|fiamma|flammen|flam/.test(name)){
+      registerAnimatedFlame(obj,fallbackPhase);
+      fallbackPhase+=1.173;
+    }
+  });
 }
 function addWallEndCandles(){
   // Velas colocadas nas duas extremidades das quatro paredes, em ambos os andares.
@@ -430,6 +444,7 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
 
   addSecondFloorFurniture();
   addInvisibleFurnitureLighting();
+  registerRemainingSceneFlames();
   loaded=true;
   enterVRButton.disabled=false;
   statusEl.textContent='Modelo original carregado. Caminhe pelo quarto e explore a galeria do segundo andar.';
