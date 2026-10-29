@@ -48,7 +48,7 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x14131a);
 scene.fog=new THREE.Fog(0x14131a,18,34);
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.25));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.0));
 renderer.setSize(window.innerWidth,window.innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
@@ -178,7 +178,7 @@ function addWallEndCandles(){
 
         root.updateMatrixWorld(true);
         const flameWorld=root.localToWorld(new THREE.Vector3(0,.20,0));
-        if(end===0)addCandleLightAt(flameWorld,0.96,3.5,candleIndex*1.41+.4);
+        if(end===0&&candleIndex%2===0)addCandleLightAt(flameWorld,0.82,3.0,candleIndex*1.41+.4);
         candleIndex++;
       }
     }
@@ -626,7 +626,8 @@ enterVRButton.addEventListener('click',async()=>{
   enterVRButton.textContent='VR ativo';
 });
 
-function updateControllerPointers(){if(!renderer.xr.isPresenting)return;for(const controller of controllers){if(controller.userData.handedness!=='right')continue;const origin=controller.getWorldPosition(new THREE.Vector3());const direction=new THREE.Vector3(0,0,-1).applyQuaternion(controller.getWorldQuaternion(new THREE.Quaternion())).normalize();raycaster.set(origin,direction);raycaster.far=8.5;const hits=raycaster.intersectObjects(interactables,false);const distance=hits.length?Math.min(hits[0].distance,5):5;const line=controller.userData.rayLine;if(line)line.geometry.setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-distance)]);if(controller.userData.reticle)controller.userData.reticle.position.set(0,0,-distance)}}
+const pointerOrigin=new THREE.Vector3();const pointerDirection=new THREE.Vector3();const pointerQuaternion=new THREE.Quaternion();
+function updateControllerPointers(){if(!renderer.xr.isPresenting)return;for(const controller of controllers){if(controller.userData.handedness!=='right')continue;controller.getWorldPosition(pointerOrigin);controller.getWorldQuaternion(pointerQuaternion);pointerDirection.set(0,0,-1).applyQuaternion(pointerQuaternion).normalize();raycaster.set(pointerOrigin,pointerDirection);raycaster.far=8.5;const hits=raycaster.intersectObjects(interactables,false);const distance=hits.length?Math.min(hits[0].distance,5):5;const line=controller.userData.rayLine;if(line){const attr=line.geometry.getAttribute('position');attr.setXYZ(1,0,0,-distance);attr.needsUpdate=true;line.geometry.computeBoundingSphere()}if(controller.userData.reticle)controller.userData.reticle.position.set(0,0,-distance)}}
 function animate(){const delta=Math.min(clock.getDelta(),.05);updateCandleLighting(clock.elapsedTime);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers();renderer.render(scene,camera)}
 renderer.setAnimationLoop(animate);
 window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
