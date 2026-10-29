@@ -295,6 +295,7 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   addPanorama();
   addWindowLandscape(room);
   addSecondFloorFurniture();
+  addInvisibleFurnitureLighting();
   loaded=true;
   enterVRButton.disabled=false;
   statusEl.textContent='Modelo original carregado. Caminhe pelo quarto e explore a galeria do segundo andar.';
@@ -365,6 +366,29 @@ function makeFoldedCurtain(name,centerX,centerY,z,width,height,color){
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));g.setIndex(indices);g.computeVertexNormals();
   const curtain=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color,roughness:.95,side:THREE.DoubleSide}));curtain.name=name;scene.add(curtain);return curtain;
 }
+function addInvisibleFurnitureLighting(){
+  // Fontes pontuais ocultas sob os móveis: iluminam o piso e o lado inferior
+  // da madeira sem adicionar luminárias visíveis ao cenário.
+  const placements=[
+    {name:'luz invisível sob a mesa de estudo',position:[0,.10,-.72],color:0xffd1a0,intensity:.62,distance:2.25},
+    {name:'luz invisível sob o móvel lateral esquerdo',position:[-4.84,.09,-.78],color:0xffc58a,intensity:.48,distance:1.85},
+    {name:'luz invisível sob o armário baixo direito',position:[4.66,.09,-3.26],color:0xffc58a,intensity:.52,distance:1.95},
+    {name:'luz invisível sob a cadeira',position:[0,.075,.40],color:0xffd8ad,intensity:.36,distance:1.45},
+    {name:'luz invisível sob a biblioteca',position:[5.16,.09,2.50],color:0xffc58a,intensity:.48,distance:1.9},
+    {name:'luz invisível sob o móvel superior esquerdo',position:[-3.55,4.43,3.66],color:0xffd0a0,intensity:.55,distance:2.0},
+    {name:'luz invisível sob o móvel superior central',position:[-.05,4.43,3.66],color:0xffd0a0,intensity:.60,distance:2.05},
+    {name:'luz invisível sob o móvel superior direito',position:[3.48,4.43,3.66],color:0xffd0a0,intensity:.55,distance:2.0}
+  ];
+  for(const placement of placements){
+    const light=new THREE.PointLight(placement.color,placement.intensity,placement.distance,2);
+    light.name=placement.name;
+    light.position.set(...placement.position);
+    // Não há malha visível nem sombra projetada: a fonte de luz fica oculta.
+    light.castShadow=false;
+    scene.add(light);
+  }
+}
+
 function addSecondFloorFurniture(){
   const walnut=mat(0x4a2d1b,.82),dark=mat(0x2c1c13,.85),brass=mat(0x96713a,.42,.52);
   [-3.55,-.05,3.48].forEach((x,i)=>{
