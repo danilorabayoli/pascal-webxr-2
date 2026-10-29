@@ -430,10 +430,81 @@ function createHistoricWindows(roomRoot){
   const bronze=mat(0x765737,.62,.28);
   const rodWood=mat(0x4c3021,.65,.04);
   for(const w of windows){
+    const measured=measureWindowOpening(roomRoot,w);
+    if(measured){
+      w.cx=measured.cx;w.cy=measured.cy;
+      w.width=Math.max(.5,measured.width-.055);
+      w.height=Math.max(.5,measured.height-.055);
+      console.info(w.name+' ajustada à abertura medida: '+w.width.toFixed(2)+' × '+w.height.toFixed(2)+' m');
+    }else{
+      // Quando o GLB não oferece uma borda de vão detectável, amplia o caixilho
+      // para preencher melhor a abertura em vez de repetir o modelo visivelmente pequeno.
+      w.width*=1.18;
+      w.height*=1.13;
+      console.warn(w.name+': não foi possível detectar o vão; usando dimensões ampliadas '+w.width.toFixed(2)+' × '+w.height.toFixed(2)+' m.');
+    }
     const wallFrame=estimateInteriorWallFrame(roomRoot,w);
     const assembly=createHistoricWindow(w,wallFrame);
     createHistoricCurtainSet(assembly,w,curtainCloth,curtainLining,bronze,rodWood);
   }
+}
+function measureWindowOpening(roomRoot,w){
+  // Detecta o vão como a faixa sem parede entre trechos sólidos, com amostragem
+  // em várias linhas para reduzir erros causados por pequenas peças da arquitetura.
+  roomRoot.updateMatrixWorld(true);
+  const meshes=[];
+  roomRoot.traverse(obj=>{if(obj.isMesh&&obj.visible&&obj.geometry)meshes.push(obj);});
+  const raycaster=new THREE.Raycaster();
+  const normalMatrix=new THREE.Matrix3();
+  function wallAt(x,y){
+    raycaster.set(new THREE.Vector3(x,y,.15),new THREE.Vector3(0,0,-1));
+    raycaster.near=0;raycaster.far=9;
+    for(const hit of raycaster.intersectObjects(meshes,false)){
+      if(hit.point.z>-3.65||hit.point.z<-6.15||!hit.face)continue;
+      normalMatrix.getNormalMatrix(hit.object.matrixWorld);
+      const n=hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+      if(Math.abs(n.z)>.68)return true;
+    }
+    return false;
+  }
+  function intervalAlong(axis,center,span,orthCenter,orthSpan){
+    const step=.035,extent=span/2+.72;
+    const values=[];
+    const count=Math.ceil((extent*2)/step);
+    for(let i=0;i<=count;i++){
+      const q=center-extent+i*(extent*2/count);
+      let solidCount=0;
+      const offsets=axis==='x'?[-.13,0,.13]:[-.13,0,.13];
+      for(const f of offsets){
+        const x=axis==='x'?q:orthCenter+f*orthSpan;
+        const y=axis==='x'?orthCenter+f*orthSpan:q;
+        if(wallAt(x,y))solidCount++;
+      }
+      values.push({q,solid:solidCount>=2});
+    }
+    const runs=[];
+    let i=0;
+    while(i<values.length){
+      if(values[i].solid){i++;continue;}
+      const first=i;
+      while(i+1<values.length&&!values[i+1].solid)i++;
+      const last=i;
+      const lo=values[first].q-(first>0?step/2:0);
+      const hi=values[last].q+(last<values.length-1?step/2:0);
+      const width=hi-lo,mid=(lo+hi)/2;
+      if(width>=span*.72&&Math.abs(mid-center)<span*.32)runs.push({lo,hi,width,mid});
+      i++;
+    }
+    runs.sort((a,b)=>Math.abs(a.mid-center)-Math.abs(b.mid-center));
+    return runs[0]||null;
+  }
+  const horizontal=intervalAlong('x',w.cx,w.width,w.cy,w.height);
+  const vertical=intervalAlong('y',w.cy,w.height,w.cx,w.width);
+  if(!horizontal||!vertical){
+    console.warn('Amostragem da abertura falhou em '+w.name+' (horizontal='+(horizontal?'ok':'não')+', vertical='+(vertical?'ok':'não')+').');
+    return null;
+  }
+  return {cx:horizontal.mid,cy:vertical.mid,width:horizontal.width,height:vertical.width};
 }
 function estimateInteriorWallFrame(roomRoot,w){
   // Mede trechos sólidos que circundam o vão e ajusta o plano à geometria do modelo.
