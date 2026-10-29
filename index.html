@@ -1110,8 +1110,8 @@ function sitOnChair(){
   activeFloorY=0;
   onStairs=false;
   if(renderer.xr.isPresenting){
-    camera.position.set(0,xrUsesFloorSpace?0:1.18,0);
-    viewOffset.position.set(0,(xrUsesFloorSpace?.22:0)-.36,0);
+    camera.position.set(0,xrUsesFloorSpace?0:1.50,0);
+    viewOffset.position.set(0,xrUsesFloorSpace?-.43:-.30,0);
     viewOffset.rotation.set(-.20,0,0);
     // No VR, o usuário ainda pode mover a cabeça naturalmente; o offset reduz a altura
     // virtual da pose e o ângulo suave ajuda a visualizar as rodas numeradas.
