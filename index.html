@@ -80,6 +80,39 @@ scene.add(fillLight);
 
 // As luzes são posicionadas diretamente nas chamas reais do modelo GLB.
 const candleLights=[];
+const flameAnimations=[];
+function registerAnimatedFlame(object,phase=0,isCore=false){
+  if(!object||object.userData.flameAnimationRegistered)return;
+  object.userData.flameAnimationRegistered=true;
+  flameAnimations.push({object,phase,isCore,baseScale:object.scale.clone(),basePosition:object.position.clone(),baseRotationZ:object.rotation.z});
+}
+let flameAnimationAccumulator=0;
+function updateFlameAnimations(delta,time){
+  // Animação visual das chamas a 30 Hz: suficiente para parecer viva e leve no Quest.
+  flameAnimationAccumulator+=delta;
+  if(flameAnimationAccumulator<1/30)return;
+  flameAnimationAccumulator=0;
+  for(const item of flameAnimations){
+    const {object,phase,isCore,baseScale,basePosition,baseRotationZ}=item;
+    if(!object.parent)continue;
+    const sway=Math.sin(time*7.3+phase);
+    const lick=Math.sin(time*12.6+phase*1.37);
+    const pulse=Math.sin(time*9.1+phase*.71);
+    const strength=isCore?.42:1;
+    object.scale.set(
+      baseScale.x*(1+strength*(.12*sway+.045*pulse)),
+      baseScale.y*(1+strength*(.085*lick+.045*sway)),
+      baseScale.z*(1+strength*(.10*Math.sin(time*8.2+phase+1.1)))
+    );
+    const swayAmount=isCore?.0012:.004;
+    object.position.set(
+      basePosition.x+Math.sin(time*6.4+phase)*swayAmount,
+      basePosition.y+Math.max(0,baseScale.y)*(.035+.055*(.5+.5*lick)),
+      basePosition.z+Math.sin(time*5.7+phase*1.2)*swayAmount*.55
+    );
+    object.rotation.z=baseRotationZ+Math.sin(time*6.8+phase)* (isCore?.035:.105);
+  }
+}
 function addCandleLightAt(position,intensity,range,phase){
   const light=new THREE.PointLight(0xffa34c,intensity,range,2);
   light.position.copy(position);
@@ -91,6 +124,7 @@ function addCandleLightAt(position,intensity,range,phase){
 function attachCandleLighting(roomRoot){
   candleLights.forEach(light=>scene.remove(light));
   candleLights.length=0;
+  flameAnimations.length=0;
   roomRoot.updateMatrixWorld(true);
   const flames=[];
   roomRoot.traverse(obj=>{
@@ -98,6 +132,7 @@ function attachCandleLighting(roomRoot){
     if(name.includes('chama da vela'))flames.push(obj);
   });
   flames.forEach((flame,index)=>{
+    registerAnimatedFlame(flame,index*1.81+.37);
     const position=flame.getWorldPosition(new THREE.Vector3());
     position.y+=0.10;
     if(index<2)addCandleLightAt(position,index===0?3.3:3.0,4.6,index*1.87+0.35);
@@ -173,9 +208,11 @@ function addWallEndCandles(){
         const flame=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),flameMat);
         flame.name='Chama alaranjada do candelabro';
         flame.scale.set(.029,.062,.028);flame.position.set(0,.198,0);root.add(flame);
+        registerAnimatedFlame(flame,candleIndex*1.43+.2);
         const core=new THREE.Mesh(new THREE.SphereGeometry(1,12,10),coreMat);
         core.name='Centro luminoso da chama';core.scale.set(.012,.035,.013);
         core.position.set(0,.188,-.006);root.add(core);
+        registerAnimatedFlame(core,candleIndex*1.43+.83,true);
 
         root.updateMatrixWorld(true);
         const flameWorld=root.localToWorld(new THREE.Vector3(0,.20,0));
@@ -239,8 +276,10 @@ function addCeilingChandeliers(){
       wick.name='Pavio do lustre '+(i+1);wick.position.set(x,-.476,z);root.add(wick);
       const flame=new THREE.Mesh(new THREE.SphereGeometry(1,14,10),flameMat);
       flame.name='Chama do lustre '+(i+1);flame.scale.set(.024,.052,.024);flame.position.set(x,-.43,z);root.add(flame);
+      registerAnimatedFlame(flame,fixture.phase+i*1.61+.24);
       const core=new THREE.Mesh(new THREE.SphereGeometry(1,10,8),coreMat);
       core.name='Núcleo claro da chama '+(i+1);core.scale.set(.010,.027,.011);core.position.set(x,-.44,z-.004);root.add(core);
+      registerAnimatedFlame(core,fixture.phase+i*1.61+.73,true);
     }
 
     // A fonte central fornece luz prática que realmente ilumina o ambiente.
@@ -639,6 +678,7 @@ function addSecondFloorFurniture(){
       candle.position.set(cx,.945,-.035);root.add(candle);
       const flame=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),new THREE.MeshBasicMaterial({color:0xff982f}));
       flame.name='Chama da vela do movel superior';flame.scale.set(.018,.043,.018);flame.position.set(cx,1.08,-.035);root.add(flame);
+      registerAnimatedFlame(flame,i*1.29+(cx>0?1.7:.3));
       const wick=new THREE.Mesh(new THREE.CylinderGeometry(.003,.004,.018,6),mat(0x30241b,.8));
       wick.position.set(cx,1.054,-.035);root.add(wick);
       root.updateMatrixWorld(true);
@@ -871,7 +911,7 @@ enterVRButton.addEventListener('click',async()=>{
 const pointerOrigin=new THREE.Vector3();const pointerDirection=new THREE.Vector3();const pointerQuaternion=new THREE.Quaternion();
 let pointerUpdateAccumulator=0;
 function updateControllerPointers(delta){if(!renderer.xr.isPresenting)return;pointerUpdateAccumulator+=delta;if(pointerUpdateAccumulator<.033)return;pointerUpdateAccumulator=0;for(const controller of controllers){if(controller.userData.handedness!=='right')continue;controller.getWorldPosition(pointerOrigin);controller.getWorldQuaternion(pointerQuaternion);pointerDirection.set(0,0,-1).applyQuaternion(pointerQuaternion).normalize();raycaster.set(pointerOrigin,pointerDirection);raycaster.far=8.5;const hits=raycaster.intersectObjects(interactables,false);const distance=hits.length?Math.min(hits[0].distance,5):5;const line=controller.userData.rayLine;if(line){const attr=line.geometry.getAttribute('position');attr.setXYZ(1,0,0,-distance);attr.needsUpdate=true;line.geometry.computeBoundingSphere()}if(controller.userData.reticle)controller.userData.reticle.position.set(0,0,-distance)}}
-function animate(){const delta=Math.min(clock.getDelta(),.05);updateCandleLighting(clock.elapsedTime);updateSmoke(delta,clock.elapsedTime);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers(delta);renderer.render(scene,camera)}
+function animate(){const delta=Math.min(clock.getDelta(),.05);updateCandleLighting(clock.elapsedTime);updateFlameAnimations(delta,clock.elapsedTime);updateSmoke(delta,clock.elapsedTime);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers(delta);renderer.render(scene,camera)}
 renderer.setAnimationLoop(animate);
 window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
 renderer.xr.addEventListener('sessionstart',()=>{viewOffset.position.y=xrUsesFloorSpace?0.22:0;camera.position.set(0,xrUsesFloorSpace?0:1.62,0);camera.rotation.set(0,0,0);pitch=0;crosshair.style.opacity='0';document.exitPointerLock?.();});
