@@ -575,6 +575,7 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   alignHistoricWindows(room);
   addPanorama();
   createHistoricWindows(room);
+  addPascalinaUpgrade(room);
   addPascalCharacter();
   addInteractionTargets();
 
@@ -849,6 +850,136 @@ function box(parent,name,pos,size,material,rotation=null){const mesh=new THREE.M
 function sphere(parent,name,pos,size,material){const mesh=new THREE.Mesh(new THREE.SphereGeometry(1,16,10),material);mesh.name=name;mesh.position.set(...pos);mesh.scale.set(...size);parent.add(mesh);return mesh}
 function capsuleBetween(parent,name,a,b,radius,material){const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),dir=B.clone().sub(A);const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,dir.length(),12),material);mesh.name=name;mesh.position.copy(A).add(B).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());parent.add(mesh);sphere(parent,name+' joint A',a,[radius,radius,radius],material);sphere(parent,name+' joint B',b,[radius,radius,radius],material)}
 
+function makePascalinaDialTexture(){
+  const canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;
+  const ctx=canvas.getContext('2d');
+  const cx=128,cy=128;
+  ctx.clearRect(0,0,256,256);
+  ctx.fillStyle='#c9a361';ctx.beginPath();ctx.arc(cx,cy,120,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#6f4c24';ctx.beginPath();ctx.arc(cx,cy,113,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#e2c58c';ctx.beginPath();ctx.arc(cx,cy,106,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#f6e2b3';ctx.lineWidth=3;ctx.beginPath();ctx.arc(cx,cy,101,0,Math.PI*2);ctx.stroke();
+  for(let i=0;i<10;i++){
+    const a=(i/10)*Math.PI*2-Math.PI/2;
+    const inner=79,outer=92;
+    ctx.strokeStyle='#8a642e';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*inner,cy+Math.sin(a)*inner);ctx.lineTo(cx+Math.cos(a)*outer,cy+Math.sin(a)*outer);ctx.stroke();
+    const tx=cx+Math.cos(a)*65,ty=cy+Math.sin(a)*65;
+    ctx.fillStyle='#3b291b';ctx.font='bold 27px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(String(i),tx,ty);
+  }
+  ctx.fillStyle='#5a1f16';ctx.beginPath();ctx.moveTo(cx-6,cy-89);ctx.lineTo(cx+6,cy-89);ctx.lineTo(cx,cy-69);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#80602c';ctx.beginPath();ctx.arc(cx,cy,26,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#e8ce99';ctx.beginPath();ctx.arc(cx,cy,17,0,Math.PI*2);ctx.fill();
+  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=1;return texture;
+}
+function makePascalinaRegisterTexture(){
+  const canvas=document.createElement('canvas');canvas.width=768;canvas.height=120;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#2b2116';ctx.fillRect(0,0,768,120);
+  ctx.strokeStyle='#bd9654';ctx.lineWidth=5;ctx.strokeRect(3,3,762,114);
+  const digits='0000000';
+  for(let i=0;i<7;i++){
+    const x=18+i*105;
+    ctx.fillStyle='#e6d7b6';ctx.fillRect(x,18,84,84);
+    ctx.strokeStyle='#9b7139';ctx.lineWidth=3;ctx.strokeRect(x,18,84,84);
+    ctx.fillStyle='#241a12';ctx.font='bold 61px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(digits[i],x+42,59);
+  }
+  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;return texture;
+}
+function addPascalinaUpgrade(roomRoot){
+  // Substitui apenas a Pascalina antiga identificável e suas pequenas peças na região do instrumento.
+  // O tampo da mesa e os demais objetos fora do volume da máquina são preservados.
+  roomRoot.updateMatrixWorld(true);
+  const pascalinaName=/pascalina|pascaline|calculatrice|adding machine|mechanical calculator|calculating machine/;
+  roomRoot.traverse(obj=>{
+    const clean=(obj.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    if(pascalinaName.test(clean)){obj.visible=false;return;}
+    if(!obj.isMesh||!obj.geometry)return;
+    const bounds=new THREE.Box3().setFromObject(obj);
+    const size=bounds.getSize(new THREE.Vector3());
+    const center=bounds.getCenter(new THREE.Vector3());
+    const insideMachineZone=center.x>-.52&&center.x<.52&&center.y>.96&&center.y<1.27&&center.z>-.99&&center.z<-.28;
+    const fitsMachine=size.x<1.04&&size.y<.36&&size.z<.74&&size.x>.018&&bounds.min.y>.89;
+    if(insideMachineZone&&fitsMachine)obj.visible=false;
+  });
+
+  const machine=new THREE.Group();machine.name='Pascalina histórica aprimorada';machine.position.set(0,1.035,-.62);scene.add(machine);
+  const walnut=mat(0x4b2d1c,.72,.025);
+  const darkWalnut=mat(0x28180f,.8,.02);
+  const brass=mat(0xa77b36,.4,.62);
+  const brassDark=mat(0x704b21,.48,.58);
+  const iron=mat(0x30241a,.55,.45);
+  const cream=mat(0xe0cfaa,.62,.08);
+
+  // Caixa artesanal de nogueira com plinto e cantoneiras de latão.
+  box(machine,'Plinto de madeira da Pascalina',[0,-.12,0],[.94,.038,.56],darkWalnut);
+  box(machine,'Corpo de nogueira da Pascalina',[0,-.005,0],[.90,.20,.52],walnut);
+  box(machine,'Faixa frontal de latão',[0,-.005,.266],[.84,.155,.018],brassDark);
+  box(machine,'Moldura escura do registro',[0,-.005,.278],[.78,.128,.012],iron);
+
+  const register=new THREE.Mesh(new THREE.PlaneGeometry(.745,.112),new THREE.MeshBasicMaterial({map:makePascalinaRegisterTexture(),side:THREE.DoubleSide}));
+  register.name='Janelas numéricas da Pascalina';register.position.set(0,-.005,.286);register.renderOrder=3;machine.add(register);
+
+  // Sete mostradores circulares numerados no topo, cada um com aro metálico e eixo central.
+  const dialTexture=makePascalinaDialTexture();
+  const dialFaceMat=new THREE.MeshBasicMaterial({map:dialTexture,side:THREE.DoubleSide});
+  const dialCount=7,dialSpacing=.101,dialStart=-((dialCount-1)*dialSpacing)/2;
+  for(let i=0;i<dialCount;i++){
+    const x=dialStart+i*dialSpacing;
+    const bezel=new THREE.Mesh(new THREE.CylinderGeometry(.049,.052,.018,24),brassDark);
+    bezel.name='Aro do mostrador decimal '+(i+1);bezel.position.set(x,.111,-.01);machine.add(bezel);
+    const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.043,.043,.014,24),brass);
+    wheel.name='Roda numerada da Pascalina '+(i+1);wheel.position.set(x,.125,-.01);machine.add(wheel);
+    const face=new THREE.Mesh(new THREE.PlaneGeometry(.083,.083),dialFaceMat);
+    face.name='Escala numerada da roda '+(i+1);face.rotation.x=-Math.PI/2;face.position.set(x,.133,-.01);face.renderOrder=2;machine.add(face);
+    const hub=new THREE.Mesh(new THREE.CylinderGeometry(.009,.009,.004,12),cream);
+    hub.name='Eixo central do mostrador '+(i+1);hub.position.set(x,.136,-.01);machine.add(hub);
+  }
+
+  // Nervuras metálicas e rebites nos quatro cantos da caixa.
+  for(const x of [-.414,.414]){
+    for(const z of [-.235,.235]){
+      const bracket=box(machine,'Cantoneira de latão',[x,.012,z],[.045,.17,.028],brass);
+      bracket.rotation.z=x<0?-.08:.08;
+      sphere(machine,'Rebite da cantoneira',[x,-.048,z+.018],[.012,.012,.008],cream);
+    }
+  }
+
+  // Pequenas rodas dentadas expostas nas extremidades da face frontal.
+  for(const side of [-1,1]){
+    const gx=side*.385,gy=-.069,gz=.292;
+    const gear=new THREE.Mesh(new THREE.CylinderGeometry(.037,.037,.016,20),brass);
+    gear.name='Engrenagem lateral visível '+side;gear.rotation.x=Math.PI/2;gear.position.set(gx,gy,gz);machine.add(gear);
+    const center=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.019,12),iron);
+    center.name='Eixo da engrenagem lateral '+side;center.rotation.x=Math.PI/2;center.position.set(gx,gy,gz+.012);machine.add(center);
+    for(let t=0;t<8;t++){
+      const a=t*Math.PI/4;
+      box(machine,'Dente da engrenagem '+side+'-'+t,[gx+Math.cos(a)*.037,gy+Math.sin(a)*.037,gz],[.012,.012,.018],brass);
+    }
+  }
+
+  // Pequena manivela lateral com pegador de madeira.
+  const crankX=.463;
+  const crankStem=new THREE.Mesh(new THREE.CylinderGeometry(.009,.009,.085,10),brass);
+  crankStem.name='Eixo da manivela';crankStem.rotation.z=Math.PI/2;crankStem.position.set(crankX,-.045,.015);machine.add(crankStem);
+  const crankArm=box(machine,'Braço da manivela',[.505,-.045,.015],[.07,.09,.022],brass);
+  crankArm.rotation.z=-.35;
+  sphere(machine,'Pegador escuro da manivela',[.523,-.095,.016],[.024,.034,.024],darkWalnut);
+
+  // Inscrição discreta em placa de latão, em vez de letras modernas.
+  const labelCanvas=document.createElement('canvas');labelCanvas.width=384;labelCanvas.height=64;
+  const ctx=labelCanvas.getContext('2d');
+  ctx.fillStyle='#9b7139';ctx.fillRect(0,0,384,64);
+  ctx.fillStyle='#3a2515';ctx.font='bold 30px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('PASCALINA  ·  1642',192,32);
+  const labelTex=new THREE.CanvasTexture(labelCanvas);labelTex.colorSpace=THREE.SRGBColorSpace;
+  const label=new THREE.Mesh(new THREE.PlaneGeometry(.44,.055),new THREE.MeshBasicMaterial({map:labelTex,side:THREE.DoubleSide}));
+  label.name='Placa histórica da Pascalina';label.position.set(0,.078,.267);label.renderOrder=4;machine.add(label);
+
+  console.info('Pascalina aprimorada criada: caixa de nogueira, sete rodas decimais, registro numérico e detalhes de latão.');
+}
 function addPascalCharacter(){
   // Retrato procedural inspirado no retrato atribuído a Pascal por volta de 1650:
   // cabelo castanho-escuro até os ombros, rosto sem barba, casaca escura e gola branca.
