@@ -1320,11 +1320,20 @@ for(let i=0;i<2;i++){
     const hand=controller.userData.handedness;
     if(dialogStage>=0){if(hand==='left')advanceDialogue();else closeDialogue();return}
     if(isSitting&&hand==='left'){standUpFromChair();return}
-    if(hand==='right'){const origin=controller.getWorldPosition(new THREE.Vector3());const dir=new THREE.Vector3(0,0,-1).applyQuaternion(controller.getWorldQuaternion(new THREE.Quaternion())).normalize();interactRay(origin,dir)}
+    if(hand==='right'){
+      // Calcula o raio após atualizar a transformação herdada do rig do jogador.
+      rig.updateWorldMatrix(true,true);
+      controller.updateWorldMatrix(true,true);
+      const origin=controller.getWorldPosition(new THREE.Vector3());
+      const dir=new THREE.Vector3(0,0,-1).applyQuaternion(controller.getWorldQuaternion(new THREE.Quaternion())).normalize();
+      interactRay(origin,dir);
+    }
   });
   const pts=[new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-5)];const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xe4bc7e,transparent:true,opacity:.68}));controller.add(line);controller.userData.rayLine=line;
   const reticle=new THREE.Mesh(new THREE.RingGeometry(.025,.045,24),new THREE.MeshBasicMaterial({color:0xf2d5a0,side:THREE.DoubleSide,depthTest:true}));reticle.position.set(0,0,-5);controller.add(reticle);controller.userData.reticle=reticle;
-  scene.add(controller);controllers.push(controller);
+  // O personagem e a câmera se movem dentro de rig. Os controles precisam herdar
+  // esse mesmo transform; em scene direto, os raios ficam no ponto de origem do cômodo.
+  rig.add(controller);controllers.push(controller);
 }
 
 function readStick(source){if(!source||!source.gamepad)return {x:0,y:0};const a=source.gamepad.axes||[];let x=Number(a[0]||0),y=Number(a[1]||0);if(Math.hypot(x,y)<.04&&a.length>=4&&Math.hypot(Number(a[2]||0),Number(a[3]||0))>.12){x=Number(a[2]||0);y=Number(a[3]||0)}const m=Math.min(Math.hypot(x,y),1);if(m<.15)return {x:0,y:0};const k=(m-.15)/.85;return {x:x/m*k,y:y/m*k}}
