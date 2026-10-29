@@ -101,7 +101,7 @@ function attachCandleLighting(roomRoot){
     const position=flame.getWorldPosition(new THREE.Vector3());
     position.y+=0.10;
     if(index<2)addCandleLightAt(position,index===0?3.3:3.0,4.6,index*1.87+0.35);
-    if(index<2){const smokePosition=position.clone();smokePosition.y+=.06;createSmokeEmitter(smokePosition);}
+    if(index<10){const smokePosition=position.clone();smokePosition.y+=.06;createSmokeEmitter(smokePosition);}
     // Reforça apenas a emissão da malha que já é a chama da vela no modelo.
     flame.traverse(part=>{
       if(!part.isMesh||!part.material)return;
@@ -254,17 +254,17 @@ const smokeEmitters=[];
 const smokeCanvas=document.createElement('canvas');smokeCanvas.width=64;smokeCanvas.height=64;
 const smokeCtx=smokeCanvas.getContext('2d');
 const smokeGrad=smokeCtx.createRadialGradient(32,32,2,32,32,30);
-smokeGrad.addColorStop(0,'rgba(205,201,192,.20)');
-smokeGrad.addColorStop(.5,'rgba(190,187,180,.07)');
+smokeGrad.addColorStop(0,'rgba(225,222,214,.38)');
+smokeGrad.addColorStop(.5,'rgba(205,201,192,.17)');
 smokeGrad.addColorStop(1,'rgba(170,165,158,0)');
 smokeCtx.fillStyle=smokeGrad;smokeCtx.fillRect(0,0,64,64);
 const smokeMap=new THREE.CanvasTexture(smokeCanvas);
 function createSmokeEmitter(position){
   const emitter={position:position.clone(),particles:[]};
-  for(let i=0;i<4;i++){
-    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:smokeMap,transparent:true,opacity:0,depthWrite:false}));
-    sprite.position.copy(position);sprite.scale.set(.055,.075,1);scene.add(sprite);
-    emitter.particles.push({sprite,age:Math.random()*2.2,life:3.2+(i%2)*.45});
+  for(let i=0;i<3;i++){
+    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:smokeMap,transparent:true,opacity:0,depthWrite:false,blending:THREE.NormalBlending}));
+    sprite.position.copy(position);sprite.scale.set(.085,.12,1);scene.add(sprite);
+    emitter.particles.push({sprite,age:Math.random()*2.8,life:4.0+(i%2)*.5});
   }
   smokeEmitters.push(emitter);
 }
@@ -278,11 +278,11 @@ function updateSmoke(delta,time){
     p.age+=step;
     if(p.age>=p.life){p.age=0;p.sprite.position.copy(emitter.position);}
     const t=p.age/p.life;
-    p.sprite.position.y=emitter.position.y+.025+p.age*.12;
+    p.sprite.position.y=emitter.position.y+.035+p.age*.16;
     p.sprite.position.x=emitter.position.x+Math.sin(time+p.age*2)*.012;
     p.sprite.position.z=emitter.position.z+Math.cos(time*.7+p.age)*.01;
-    p.sprite.material.opacity=Math.sin(Math.PI*t)*.19;
-    const size=.05+t*.13;p.sprite.scale.set(size,size*1.45,1);
+    p.sprite.material.opacity=Math.sin(Math.PI*t)*.38;
+    const size=.075+t*.24;p.sprite.scale.set(size,size*1.55,1);
   }
 }
 let nextCandleFlickerUpdate=0;
@@ -505,7 +505,7 @@ function addSecondFloorFurniture(){
       root.updateMatrixWorld(true);
       const flamePos=root.localToWorld(new THREE.Vector3(cx,1.09,-.035));
       if(cx<0)addCandleLightAt(flamePos,.42,1.65,i*.8+.3);
-      if(cx<0)createSmokeEmitter(flamePos);
+      createSmokeEmitter(flamePos);
     }
     if(i===1){const stand=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.18,12),brass);stand.position.set(.40,.90,.05);root.add(stand);sphere(root,'Pequena esfera de latão',[.40,1.01,.05],[.07,.07,.07],brass);}
     upperBlocks.push({x0:x-w/2-.12,x1:x+w/2+.12,z0:3.30,z1:4.02});
