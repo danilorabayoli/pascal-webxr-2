@@ -156,6 +156,33 @@ function attachCandleLighting(roomRoot){
     addCandleLightAt(new THREE.Vector3(-1.05,1.40,-0.28),3.0,4.6,2.22);
   }
 }
+function createFlameDropGeometry(segments=12,tipLean=.35){
+  // Perfil de chama: base pequena e redonda, corpo cheio e ponta fina inclinada.
+  const profile=[
+    new THREE.Vector2(0,0),
+    new THREE.Vector2(.24,.045),
+    new THREE.Vector2(.48,.16),
+    new THREE.Vector2(.62,.30),
+    new THREE.Vector2(.57,.45),
+    new THREE.Vector2(.43,.61),
+    new THREE.Vector2(.27,.77),
+    new THREE.Vector2(.13,.91),
+    new THREE.Vector2(0,1)
+  ];
+  const geometry=new THREE.LatheGeometry(profile,segments);
+  const attr=geometry.getAttribute('position');
+  for(let i=0;i<attr.count;i++){
+    const y=attr.getY(i);
+    const lean=Math.pow(y,1.7)*tipLean;
+    attr.setX(i,attr.getX(i)+lean);
+    // Pequeno estreitamento adicional perto da ponta, para evitar aspecto de gota simétrica rígida.
+    if(y>.58)attr.setZ(i,attr.getZ(i)*(1-.18*((y-.58)/.42)));
+  }
+  attr.needsUpdate=true;
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
 function addPascalDeskCandleFlames(roomRoot){
   // Alvo: velas reais sobre a mesa de estudo de Pascal, no primeiro andar.
   // O GLB nem sempre nomeia essas malhas com a palavra "chama"; por isso detectamos
@@ -223,32 +250,32 @@ function addPascalDeskCandleFlames(roomRoot){
       }
     }
     const phase=2.17+added*1.319;
-    if(foundFlame){
-      registerAnimatedFlame(foundFlame,phase);
-      added++;
-      continue;
-    }
+    // Esconde a chama antiga, que tinha formato oval parecido com a própria vela.
+    // Substituímos por uma geometria real de gota, criada no espaço mundial da cena.
+    if(foundFlame)foundFlame.visible=false;
 
-    // Chama em forma de gota (elipsoide leve) colocada diretamente sobre o pavio.
-    const flameHeight=Math.max(.035,Math.min(.075,candle.size.x*.92));
-    const flameWidth=flameHeight*.47;
+    const flameHeight=Math.max(.052,Math.min(.105,candle.size.x*1.32));
+    const flameWidth=flameHeight*.36;
+    const flameGeometry=createFlameDropGeometry(14);
     const flame=new THREE.Mesh(
-      new THREE.SphereGeometry(1,12,8),
-      new THREE.MeshBasicMaterial({color:0xff8525})
+      flameGeometry,
+      new THREE.MeshBasicMaterial({color:0xff7a18})
     );
-    flame.name='Chama animada — vela da mesa de Blaise Pascal '+(added+1);
-    flame.scale.set(flameWidth,flameHeight,flameWidth*.82);
-    flame.position.set(x,top+flameHeight*.53,z);
+    flame.name='Chama em gota animada — vela da mesa de Blaise Pascal '+(added+1);
+    flame.scale.set(flameWidth,flameHeight,flameWidth*.78);
+    flame.position.set(x,top+flameHeight*.49,z);
     scene.add(flame);
     registerAnimatedFlame(flame,phase);
 
+    const coreHeight=flameHeight*.57;
+    const coreWidth=flameWidth*.48;
     const core=new THREE.Mesh(
-      new THREE.SphereGeometry(1,10,7),
-      new THREE.MeshBasicMaterial({color:0xffe6a1})
+      createFlameDropGeometry(12,.78),
+      new THREE.MeshBasicMaterial({color:0xffe7a0})
     );
-    core.name='Núcleo animado — vela da mesa de Blaise Pascal '+(added+1);
-    core.scale.set(flameWidth*.42,flameHeight*.47,flameWidth*.4);
-    core.position.set(x,top+flameHeight*.36,z-.003);
+    core.name='Núcleo de fogo em gota — vela da mesa de Blaise Pascal '+(added+1);
+    core.scale.set(coreWidth,coreHeight,coreWidth*.8);
+    core.position.set(x-flameWidth*.05,top+flameHeight*.28,z-.002);
     scene.add(core);
     registerAnimatedFlame(core,phase+.43,true);
     added++;
