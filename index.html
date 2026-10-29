@@ -156,27 +156,35 @@ function attachCandleLighting(roomRoot){
     addCandleLightAt(new THREE.Vector3(-1.05,1.40,-0.28),3.0,4.6,2.22);
   }
 }
-function createFlameDropGeometry(segments=12,tipLean=.35){
-  // Perfil de chama: base pequena e redonda, corpo cheio e ponta fina inclinada.
+function createFlameDropGeometry(segments=16,tipLean=.18){
+  // Chama 3D alongada: base arredondada, bojo na parte inferior, laterais afinando
+  // continuamente e uma ponta estreita deslocada, sem topo redondo como uma esfera.
   const profile=[
     new THREE.Vector2(0,0),
-    new THREE.Vector2(.24,.045),
-    new THREE.Vector2(.48,.16),
-    new THREE.Vector2(.62,.30),
-    new THREE.Vector2(.57,.45),
-    new THREE.Vector2(.43,.61),
-    new THREE.Vector2(.27,.77),
-    new THREE.Vector2(.13,.91),
+    new THREE.Vector2(.12,.012),
+    new THREE.Vector2(.27,.028),
+    new THREE.Vector2(.38,.065),
+    new THREE.Vector2(.45,.125),
+    new THREE.Vector2(.48,.205),
+    new THREE.Vector2(.46,.275),
+    new THREE.Vector2(.41,.355),
+    new THREE.Vector2(.34,.445),
+    new THREE.Vector2(.27,.535),
+    new THREE.Vector2(.205,.635),
+    new THREE.Vector2(.145,.735),
+    new THREE.Vector2(.095,.825),
+    new THREE.Vector2(.052,.91),
+    new THREE.Vector2(.022,.975),
     new THREE.Vector2(0,1)
   ];
   const geometry=new THREE.LatheGeometry(profile,segments);
   const attr=geometry.getAttribute('position');
   for(let i=0;i<attr.count;i++){
     const y=attr.getY(i);
-    const lean=Math.pow(y,1.7)*tipLean;
+    // A ponta inclina-se mais do que a base, como uma chama a dançar no ar.
+    const lean=Math.pow(Math.min(1,y),1.65)*tipLean;
     attr.setX(i,attr.getX(i)+lean);
-    // Pequeno estreitamento adicional perto da ponta, para evitar aspecto de gota simétrica rígida.
-    if(y>.58)attr.setZ(i,attr.getZ(i)*(1-.18*((y-.58)/.42)));
+    if(y>.64)attr.setZ(i,attr.getZ(i)*(1-.32*((y-.64)/.36)));
   }
   attr.needsUpdate=true;
   geometry.computeVertexNormals();
@@ -230,15 +238,15 @@ function addPascalDeskCandleFlames(roomRoot){
     const x=candle.center.x,z=candle.center.z,top=candle.top;
     // Se o modelo já contém uma chama/núcleo no topo da vela, anima essa peça
     // em vez de criar uma segunda chama sobreposta.
-    let foundFlame=null;
+    const oldFlames=[];
     for(const other of meshes){
       if(other===candle.obj)continue;
       const name=(other.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
       const b=new THREE.Box3().setFromObject(other);
       const c=b.getCenter(new THREE.Vector3());
       const sz=b.getSize(new THREE.Vector3());
-      if(Math.abs(c.x-x)>.11||Math.abs(c.z-z)>.11)continue;
-      if(b.min.y<top-.035||b.min.y>top+.16||b.max.y>top+.27)continue;
+      if(Math.abs(c.x-x)>.12||Math.abs(c.z-z)>.12)continue;
+      if(b.min.y<top-.035||b.min.y>top+.17||b.max.y>top+.29)continue;
       const mats=Array.isArray(other.material)?other.material:[other.material];
       const warm=mats.some(m=>{
         if(!m||!m.color)return false;
@@ -246,36 +254,36 @@ function addPascalDeskCandleFlames(roomRoot){
         return col.r>.62&&col.g>.12&&col.g<.82&&col.b<.42;
       });
       if(/chama|flame|fire|fogo|flamme|fiamma/.test(name)||(warm&&sz.y>sz.x&&sz.y>sz.z)){
-        foundFlame=other;break;
+        oldFlames.push(other);
       }
     }
     const phase=2.17+added*1.319;
-    // Esconde a chama antiga, que tinha formato oval parecido com a própria vela.
-    // Substituímos por uma geometria real de gota, criada no espaço mundial da cena.
-    if(foundFlame)foundFlame.visible=false;
+    // Oculta todas as peças antigas na ponta da vela para não sobrar uma esfera
+    // ou chama original por trás da nova silhueta alongada.
+    for(const oldFlame of oldFlames)oldFlame.visible=false;
 
-    const flameHeight=Math.max(.052,Math.min(.105,candle.size.x*1.32));
-    const flameWidth=flameHeight*.36;
-    const flameGeometry=createFlameDropGeometry(14);
+    const flameHeight=Math.max(.065,Math.min(.12,candle.size.x*1.55));
+    const flameWidth=flameHeight*.56;
     const flame=new THREE.Mesh(
-      flameGeometry,
-      new THREE.MeshBasicMaterial({color:0xff7a18})
+      createFlameDropGeometry(18,.24),
+      new THREE.MeshBasicMaterial({color:0xff7014})
     );
-    flame.name='Chama em gota animada — vela da mesa de Blaise Pascal '+(added+1);
-    flame.scale.set(flameWidth,flameHeight,flameWidth*.78);
-    flame.position.set(x,top+flameHeight*.49,z);
+    flame.name='Chama pontuda animada — vela da mesa de Blaise Pascal '+(added+1);
+    flame.scale.set(flameWidth,flameHeight,flameWidth*.72);
+    // A geometria começa na base (Y=0); posicioná-la na altura do pavio evita flutuar.
+    flame.position.set(x,top+.004,z);
     scene.add(flame);
     registerAnimatedFlame(flame,phase);
 
-    const coreHeight=flameHeight*.57;
-    const coreWidth=flameWidth*.48;
+    const coreHeight=flameHeight*.66;
+    const coreWidth=flameWidth*.43;
     const core=new THREE.Mesh(
-      createFlameDropGeometry(12,.78),
-      new THREE.MeshBasicMaterial({color:0xffe7a0})
+      createFlameDropGeometry(14,.12),
+      new THREE.MeshBasicMaterial({color:0xffe4a0})
     );
-    core.name='Núcleo de fogo em gota — vela da mesa de Blaise Pascal '+(added+1);
-    core.scale.set(coreWidth,coreHeight,coreWidth*.8);
-    core.position.set(x-flameWidth*.05,top+flameHeight*.28,z-.002);
+    core.name='Núcleo alongado de fogo — vela da mesa de Blaise Pascal '+(added+1);
+    core.scale.set(coreWidth,coreHeight,coreWidth*.72);
+    core.position.set(x-flameWidth*.035,top+flameHeight*.035,z-.002);
     scene.add(core);
     registerAnimatedFlame(core,phase+.43,true);
     added++;
@@ -289,6 +297,7 @@ function registerRemainingSceneFlames(){
   // ou de móveis procedurais que não tenham sido registrados nos seus criadores.
   let fallbackPhase=5.7;
   scene.traverse(obj=>{
+    if(!obj.visible)return;
     const name=(obj.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     if(/chama|flame|fire|fogo|flamme|fiamma|flammen|flam/.test(name)){
       registerAnimatedFlame(obj,fallbackPhase);
