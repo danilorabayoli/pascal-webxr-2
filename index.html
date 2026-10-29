@@ -20,7 +20,7 @@
   <h1>Quarto de Blaise Pascal</h1>
   <p id="status">Preparando o modelo 3D original…</p>
   <div id="controls"><b>PC:</b> clique na cena para capturar o mouse; WASD anda, mouse olha, Esc libera.<br><b>Meta Quest:</b> analógico esquerdo anda, direito gira em passos de 30°; mire pelo ponto dourado e aperte o gatilho direito para conversar.</div>
-  <div id="buttons"><button id="enterVR" disabled>Entrar em VR</button><button id="resetView" class="secondary">Reiniciar posição</button></div>
+  <div id="buttons"><button id="enterVR" disabled>Entrar em VR</button><button id="sitChair" class="secondary" disabled>Sentar na cadeira</button><button id="resetView" class="secondary">Reiniciar posição</button></div>
 </div>
 <div id="crosshair"></div>
 <div id="desktopDialog" class="hidden">
@@ -37,6 +37,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const statusEl=document.querySelector('#status');
 const loadingEl=document.querySelector('#loading');
 const enterVRButton=document.querySelector('#enterVR');
+const sitChairButton=document.querySelector('#sitChair');
 const dialogEl=document.querySelector('#desktopDialog');
 const dialogTitleEl=document.querySelector('#dialogTitle');
 const dialogBodyEl=document.querySelector('#dialogBody');
@@ -491,6 +492,9 @@ let room=null;
 let pascalCharacter=null;
 let loaded=false;
 let pointerLocked=false;
+let isSitting=false;
+let seatedSnapshot=null;
+let pascalFaceUpdateAccumulator=0;
 let pitch=0;
 let dialogStage=-1;
 let dialogType='pascal';
@@ -586,7 +590,8 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   registerRemainingSceneFlames();
   loaded=true;
   enterVRButton.disabled=false;
-  statusEl.textContent='Modelo original carregado. Caminhe pelo quarto e explore a galeria do segundo andar.';
+  sitChairButton.disabled=false;
+  statusEl.textContent='Modelo original carregado. Mire na cadeira e aperte o gatilho para sentar; no PC, use o botão Sentar na cadeira.';
   loadingEl.classList.add('hidden');
 },xhr=>{
   if(xhr.total){const percent=Math.round(xhr.loaded/xhr.total*100);loadingEl.textContent=`Carregando o quarto histórico… ${percent}%`;statusEl.textContent=`Carregando modelo 3D: ${percent}%`;}
@@ -1031,14 +1036,123 @@ function addPascalCharacter(){
   sphere(p,'Cabelo superior',[0,1.86,.015],[.35,.19,.30],hair);
   sphere(p,'Cabelo atrás',[0,1.60,.16],[.34,.43,.17],hair);
   for(let i=0;i<9;i++){const x=-.28+i*.07;sphere(p,'Onda do cabelo '+i,[x,1.82+Math.sin(i*1.3)*.025,-.015],[.07,.10,.075],i%2?hair:hairLight);}
+  // Pivô sutil para dar vida ao rosto sem mover o corpo inteiro.
+  const headPivot=new THREE.Group();
+  headPivot.name='Pivô animado da cabeça de Pascal';
+  headPivot.position.set(0,1.58,0);
+  p.add(headPivot);
+  p.updateMatrixWorld(true);
+  const facePart=/^(Rosto de Blaise Pascal|Testa|Orelha |Olho |Íris |Pupila |Sobrancelha |Cabelo |Cacho |Nariz|Ponta do nariz|Boca|Onda do cabelo )/;
+  for(const child of [...p.children]){
+    if(facePart.test(child.name||''))headPivot.attach(child);
+  }
+  headPivot.userData.baseRotation=headPivot.rotation.clone();
+  headPivot.userData.eyeParts=headPivot.children.filter(o=>/^(Olho |Íris |Pupila )/.test(o.name||'')).map(o=>({object:o,scale:o.scale.clone()}));
+  headPivot.userData.brows=headPivot.children.filter(o=>(o.name||'').startsWith('Sobrancelha ')).map(o=>({object:o,rotationZ:o.rotation.z}));
+  headPivot.userData.mouth=headPivot.getObjectByName('Boca');
+  if(headPivot.userData.mouth)headPivot.userData.mouth.userData.baseScale=headPivot.userData.mouth.scale.clone();
+  p.userData.headPivot=headPivot;
   p.userData.interaction='pascal';
 }
 
+function updatePascalFaceAnimation(delta,time){
+  pascalFaceUpdateAccumulator+=delta;
+  if(pascalFaceUpdateAccumulator<1/24)return;
+  pascalFaceUpdateAccumulator=0;
+  const head=pascalCharacter&&pascalCharacter.userData.headPivot;
+  if(!head)return;
+  // Pequenos movimentos de cabeça, como alguém atento no quarto.
+  head.rotation.y=Math.sin(time*.66)*.045+Math.sin(time*.29)*.018;
+  head.rotation.z=Math.sin(time*.48+.6)*.018;
+  head.rotation.x=Math.sin(time*.42+1.1)*.012;
+
+  // Piscar com intervalo natural, incluindo um segundo piscar ocasional.
+  const cycle=(time+.73)%4.35;
+  let blink=0;
+  if(cycle<.17)blink=Math.sin(Math.PI*cycle/.17);
+  else if(cycle>3.54&&cycle<3.70)blink=Math.sin(Math.PI*(cycle-3.54)/.16)*.72;
+  for(const entry of head.userData.eyeParts||[]){
+    entry.object.scale.set(entry.scale.x,entry.scale.y*(1-.91*blink),entry.scale.z);
+  }
+  for(const entry of head.userData.brows||[]){
+    entry.object.rotation.z=entry.rotationZ+Math.sin(time*.8+.4)*.012+blink*.025;
+  }
+  const mouth=head.userData.mouth;
+  if(mouth&&mouth.userData.baseScale){
+    const base=mouth.userData.baseScale;
+    const speakingMotion=(Math.sin(time*1.3)+1)*.5;
+    mouth.scale.set(base.x*(1+.035*speakingMotion),base.y*(1+.12*speakingMotion),base.z);
+  }
+}
 function addInteractionTargets(){
   const invisible=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide});
   const pascalBox=new THREE.Mesh(new THREE.BoxGeometry(.9,1.95,.62),invisible);pascalBox.name='AlvoDeInteracaoPascal';pascalBox.position.set(0,.98,-1.72);pascalBox.userData.interaction='pascal';scene.add(pascalBox);interactables.push(pascalBox);
   const machineBox=new THREE.Mesh(new THREE.BoxGeometry(1.02,.42,.78),invisible);machineBox.name='AlvoDeInteracaoPascalina';machineBox.position.set(0,1.08,-.62);machineBox.userData.interaction='pascalina';scene.add(machineBox);interactables.push(machineBox);
+  const chairBox=new THREE.Mesh(new THREE.BoxGeometry(1.10,.95,1.08),invisible);chairBox.name='Alvo para sentar na cadeira';chairBox.position.set(0,.55,.42);chairBox.userData.interaction='chair';scene.add(chairBox);interactables.push(chairBox);
 }
+
+function sitOnChair(){
+  if(isSitting||!loaded)return;
+  seatedSnapshot={
+    rigPosition:rig.position.clone(),
+    rigRotation:rig.rotation.clone(),
+    cameraPosition:camera.position.clone(),
+    cameraRotation:camera.rotation.clone(),
+    viewPosition:viewOffset.position.clone(),
+    viewRotation:viewOffset.rotation.clone(),
+    activeFloorY,onStairs,pitch
+  };
+  isSitting=true;
+  // A cadeira fica diante do tampo; esta pose coloca o ponto de vista sobre o assento,
+  // orientado para baixo na direção da Pascalina, sem atravessar os obstáculos de caminhada.
+  rig.position.set(0,0,.48);
+  rig.rotation.set(0,0,0);
+  activeFloorY=0;
+  onStairs=false;
+  if(renderer.xr.isPresenting){
+    camera.position.set(0,xrUsesFloorSpace?0:1.18,0);
+    viewOffset.position.set(0,(xrUsesFloorSpace?.22:0)-.36,0);
+    viewOffset.rotation.set(-.20,0,0);
+    // No VR, o usuário ainda pode mover a cabeça naturalmente; o offset reduz a altura
+    // virtual da pose e o ângulo suave ajuda a visualizar as rodas numeradas.
+    camera.rotation.set(0,0,0);
+    pitch=0;
+  }else{
+    viewOffset.position.set(0,0,0);
+    viewOffset.rotation.set(0,0,0);
+    camera.position.set(0,1.38,0);
+    camera.rotation.order='YXZ';
+    camera.rotation.set(-.48,0,0);
+    pitch=-.48;
+  }
+  sitChairButton.textContent='Levantar da cadeira';
+  statusEl.textContent='Você está sentado diante da Pascalina. Mire e use o gatilho esquerdo no VR para levantar.';
+}
+function standUpFromChair(){
+  if(!isSitting)return;
+  const snap=seatedSnapshot;
+  isSitting=false;
+  seatedSnapshot=null;
+  if(snap){
+    rig.position.copy(snap.rigPosition);
+    rig.rotation.copy(snap.rigRotation);
+    camera.position.copy(snap.cameraPosition);
+    camera.rotation.copy(snap.cameraRotation);
+    viewOffset.position.copy(snap.viewPosition);
+    viewOffset.rotation.copy(snap.viewRotation);
+    activeFloorY=snap.activeFloorY;
+    onStairs=snap.onStairs;
+    pitch=snap.pitch;
+  }else{
+    camera.position.set(0,renderer.xr.isPresenting?(xrUsesFloorSpace?0:1.62):1.78,0);
+    viewOffset.position.y=renderer.xr.isPresenting&&xrUsesFloorSpace?.22:0;
+    viewOffset.rotation.set(0,0,0);
+  }
+  sitChairButton.textContent='Sentar na cadeira';
+  statusEl.textContent='Você se levantou da cadeira. Continue explorando o quarto.';
+}
+function toggleChairSit(){if(isSitting)standUpFromChair();else sitOnChair();}
+sitChairButton.addEventListener('click',toggleChairSit);
 
 // Caixas simples de colisão para que o avatar não atravesse as paredes e os móveis principais.
 const lowerBlocks=[
@@ -1134,7 +1248,7 @@ function updateDialogue(){
 }
 function advanceDialogue(){if(dialogStage<0)return;if(dialogStage>=2){closeDialogue();return}dialogStage++;updateDialogue()}
 function closeDialogue(){dialogStage=-1;if(dialoguePanel)dialoguePanel.visible=false;dialogEl.classList.add('hidden')}
-function interactRay(origin,direction){raycaster.set(origin,direction);raycaster.far=8.5;const hits=raycaster.intersectObjects(interactables,false);if(hits.length){openDialogue(hits[0].object.userData.interaction);return true}return false}
+function interactRay(origin,direction){raycaster.set(origin,direction);raycaster.far=8.5;const hits=raycaster.intersectObjects(interactables,false);if(hits.length){const action=hits[0].object.userData.interaction;if(action==='chair'){toggleChairSit();return true}openDialogue(action);return true}return false}
 function desktopInteract(){const dir=new THREE.Vector3();camera.getWorldDirection(dir);return interactRay(camera.getWorldPosition(new THREE.Vector3()),dir)}
 
 dialogNextButton.addEventListener('click',()=>{if(dialogStage===2)closeDialogue();else advanceDialogue()});
@@ -1151,7 +1265,7 @@ document.addEventListener('pointerlockchange',()=>{pointerLocked=document.pointe
 document.addEventListener('mousemove',e=>{if(!pointerLocked||renderer.xr.isPresenting||dialogStage>=0)return;camera.rotation.y-=e.movementX*.0022;pitch=THREE.MathUtils.clamp(pitch-e.movementY*.0022,-1.42,1.42);camera.rotation.x=pitch});
 document.addEventListener('keydown',e=>{enableSounds();keyState.add(e.code);if(e.code==='Escape'){if(dialogStage>=0)closeDialogue();else if(pointerLocked)document.exitPointerLock?.()}if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});
 document.addEventListener('keyup',e=>keyState.delete(e.code));
-document.querySelector('#resetView').addEventListener('click',()=>{rig.position.set(0,0,3.65);rig.rotation.set(0,0,0);activeFloorY=0;onStairs=false;viewOffset.position.y=(renderer.xr.isPresenting&&xrUsesFloorSpace)?0.22:0;camera.position.set(0,renderer.xr.isPresenting?(xrUsesFloorSpace?0:1.62):1.78,0);camera.rotation.set(0,0,0);pitch=0;closeDialogue()});
+document.querySelector('#resetView').addEventListener('click',()=>{isSitting=false;seatedSnapshot=null;sitChairButton.textContent='Sentar na cadeira';rig.position.set(0,0,3.65);rig.rotation.set(0,0,0);activeFloorY=0;onStairs=false;viewOffset.position.set(0,(renderer.xr.isPresenting&&xrUsesFloorSpace)?0.22:0,0);viewOffset.rotation.set(0,0,0);camera.position.set(0,renderer.xr.isPresenting?(xrUsesFloorSpace?0:1.62):1.78,0);camera.rotation.set(0,0,0);pitch=0;closeDialogue()});
 
 const controllers=[];
 for(let i=0;i<2;i++){
@@ -1160,6 +1274,7 @@ for(let i=0;i<2;i++){
   controller.addEventListener('selectstart',()=>{
     const hand=controller.userData.handedness;
     if(dialogStage>=0){if(hand==='left')advanceDialogue();else closeDialogue();return}
+    if(isSitting&&hand==='left'){standUpFromChair();return}
     if(hand==='right'){const origin=controller.getWorldPosition(new THREE.Vector3());const dir=new THREE.Vector3(0,0,-1).applyQuaternion(controller.getWorldQuaternion(new THREE.Quaternion())).normalize();interactRay(origin,dir)}
   });
   const pts=[new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-5)];const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xe4bc7e,transparent:true,opacity:.68}));controller.add(line);controller.userData.rayLine=line;
@@ -1169,8 +1284,8 @@ for(let i=0;i<2;i++){
 
 function readStick(source){if(!source||!source.gamepad)return {x:0,y:0};const a=source.gamepad.axes||[];let x=Number(a[0]||0),y=Number(a[1]||0);if(Math.hypot(x,y)<.04&&a.length>=4&&Math.hypot(Number(a[2]||0),Number(a[3]||0))>.12){x=Number(a[2]||0);y=Number(a[3]||0)}const m=Math.min(Math.hypot(x,y),1);if(m<.15)return {x:0,y:0};const k=(m-.15)/.85;return {x:x/m*k,y:y/m*k}}
 function getXRSources(){const session=renderer.xr.getSession();if(!session)return {left:null,right:null};let left=null,right=null;for(const source of session.inputSources){if(source.handedness==='left')left=source;else if(source.handedness==='right')right=source}return {left,right}}
-function updateXRMovement(delta){if(!renderer.xr.isPresenting||dialogStage>=0)return;snapTurnCooldown=Math.max(0,snapTurnCooldown-delta);const {left,right}=getXRSources();const move=readStick(left);camera.getWorldDirection(tempForward);tempForward.y=0;if(tempForward.lengthSq()>.0001)tempForward.normalize();tempRight.crossVectors(tempForward,up).normalize();tempMove.set(0,0,0).addScaledVector(tempRight,move.x).addScaledVector(tempForward,-move.y);if(tempMove.lengthSq()>1)tempMove.normalize();const px=rig.position.x,pz=rig.position.z;moveRig(tempMove.x*1.65*delta,tempMove.z*1.65*delta);countWalking(Math.hypot(rig.position.x-px,rig.position.z-pz));const turn=readStick(right);if(snapTurnCooldown<=0&&Math.abs(turn.x)>.72){rig.rotation.y-=Math.sign(turn.x)*Math.PI/6;snapTurnCooldown=.38}}
-function updateDesktopMovement(delta){if(renderer.xr.isPresenting||dialogStage>=0||!loaded)return;let side=Number(keyState.has('KeyD')||keyState.has('ArrowRight'))-Number(keyState.has('KeyA')||keyState.has('ArrowLeft'));let forwardInput=Number(keyState.has('KeyW')||keyState.has('ArrowUp'))-Number(keyState.has('KeyS')||keyState.has('ArrowDown'));if(!side&&!forwardInput)return;camera.getWorldDirection(tempForward);tempForward.y=0;tempForward.normalize();tempRight.crossVectors(tempForward,up).normalize();tempMove.set(0,0,0).addScaledVector(tempRight,side).addScaledVector(tempForward,forwardInput);if(tempMove.lengthSq()>1)tempMove.normalize();const px=rig.position.x,pz=rig.position.z;moveRig(tempMove.x*2.3*delta,tempMove.z*2.3*delta);countWalking(Math.hypot(rig.position.x-px,rig.position.z-pz))}
+function updateXRMovement(delta){if(!renderer.xr.isPresenting||dialogStage>=0||isSitting)return;snapTurnCooldown=Math.max(0,snapTurnCooldown-delta);const {left,right}=getXRSources();const move=readStick(left);camera.getWorldDirection(tempForward);tempForward.y=0;if(tempForward.lengthSq()>.0001)tempForward.normalize();tempRight.crossVectors(tempForward,up).normalize();tempMove.set(0,0,0).addScaledVector(tempRight,move.x).addScaledVector(tempForward,-move.y);if(tempMove.lengthSq()>1)tempMove.normalize();const px=rig.position.x,pz=rig.position.z;moveRig(tempMove.x*1.65*delta,tempMove.z*1.65*delta);countWalking(Math.hypot(rig.position.x-px,rig.position.z-pz));const turn=readStick(right);if(snapTurnCooldown<=0&&Math.abs(turn.x)>.72){rig.rotation.y-=Math.sign(turn.x)*Math.PI/6;snapTurnCooldown=.38}}
+function updateDesktopMovement(delta){if(renderer.xr.isPresenting||dialogStage>=0||!loaded||isSitting)return;let side=Number(keyState.has('KeyD')||keyState.has('ArrowRight'))-Number(keyState.has('KeyA')||keyState.has('ArrowLeft'));let forwardInput=Number(keyState.has('KeyW')||keyState.has('ArrowUp'))-Number(keyState.has('KeyS')||keyState.has('ArrowDown'));if(!side&&!forwardInput)return;camera.getWorldDirection(tempForward);tempForward.y=0;tempForward.normalize();tempRight.crossVectors(tempForward,up).normalize();tempMove.set(0,0,0).addScaledVector(tempRight,side).addScaledVector(tempForward,forwardInput);if(tempMove.lengthSq()>1)tempMove.normalize();const px=rig.position.x,pz=rig.position.z;moveRig(tempMove.x*2.3*delta,tempMove.z*2.3*delta);countWalking(Math.hypot(rig.position.x-px,rig.position.z-pz))}
 
 enterVRButton.addEventListener('click',async()=>{
   enableSounds();
@@ -1188,14 +1303,14 @@ enterVRButton.addEventListener('click',async()=>{
     try{if(session&&session.end)await session.end();renderer.xr.setReferenceSpaceType('local');session=await navigator.xr.requestSession('immersive-vr');xrUsesFloorSpace=false;await renderer.xr.setSession(session)}catch(secondError){console.error(secondError);statusEl.textContent='Não foi possível iniciar o VR: '+(secondError.message||secondError);enterVRButton.disabled=false;return}
   }
   xrSession=session;statusEl.textContent='VR ativo. Analógico esquerdo anda; direito gira em passos de 30°.';
-  session.addEventListener('end',()=>{xrSession=null;viewOffset.position.y=0;camera.position.set(0,1.78,0);rig.position.y=0;activeFloorY=0;onStairs=false;enterVRButton.disabled=false;enterVRButton.textContent='Entrar em VR';statusEl.textContent='Sessão VR encerrada. Você pode entrar novamente.';closeDialogue()},{once:true});
+  session.addEventListener('end',()=>{xrSession=null;isSitting=false;seatedSnapshot=null;sitChairButton.textContent='Sentar na cadeira';viewOffset.position.set(0,0,0);viewOffset.rotation.set(0,0,0);camera.position.set(0,1.78,0);camera.rotation.set(0,0,0);rig.position.y=0;activeFloorY=0;onStairs=false;enterVRButton.disabled=false;enterVRButton.textContent='Entrar em VR';statusEl.textContent='Sessão VR encerrada. Você pode entrar novamente.';closeDialogue()},{once:true});
   enterVRButton.textContent='VR ativo';
 });
 
 const pointerOrigin=new THREE.Vector3();const pointerDirection=new THREE.Vector3();const pointerQuaternion=new THREE.Quaternion();
 let pointerUpdateAccumulator=0;
 function updateControllerPointers(delta){if(!renderer.xr.isPresenting)return;pointerUpdateAccumulator+=delta;if(pointerUpdateAccumulator<.033)return;pointerUpdateAccumulator=0;for(const controller of controllers){if(controller.userData.handedness!=='right')continue;controller.getWorldPosition(pointerOrigin);controller.getWorldQuaternion(pointerQuaternion);pointerDirection.set(0,0,-1).applyQuaternion(pointerQuaternion).normalize();raycaster.set(pointerOrigin,pointerDirection);raycaster.far=8.5;const hits=raycaster.intersectObjects(interactables,false);const distance=hits.length?Math.min(hits[0].distance,5):5;const line=controller.userData.rayLine;if(line){const attr=line.geometry.getAttribute('position');attr.setXYZ(1,0,0,-distance);attr.needsUpdate=true;line.geometry.computeBoundingSphere()}if(controller.userData.reticle)controller.userData.reticle.position.set(0,0,-distance)}}
-function animate(){const delta=Math.min(clock.getDelta(),.05);updateCandleLighting(clock.elapsedTime);updateFlameAnimations(delta,clock.elapsedTime);updateSmoke(delta,clock.elapsedTime);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers(delta);renderer.render(scene,camera)}
+function animate(){const delta=Math.min(clock.getDelta(),.05);updateCandleLighting(clock.elapsedTime);updateFlameAnimations(delta,clock.elapsedTime);updatePascalFaceAnimation(delta,clock.elapsedTime);updateSmoke(delta,clock.elapsedTime);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers(delta);renderer.render(scene,camera)}
 renderer.setAnimationLoop(animate);
 window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
 renderer.xr.addEventListener('sessionstart',()=>{viewOffset.position.y=xrUsesFloorSpace?0.22:0;camera.position.set(0,xrUsesFloorSpace?0:1.62,0);camera.rotation.set(0,0,0);pitch=0;crosshair.style.opacity='0';document.exitPointerLock?.();});
