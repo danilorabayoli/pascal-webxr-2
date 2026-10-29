@@ -437,11 +437,7 @@ function makeParisWindowTexture(){
   const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.needsUpdate=true;return tex;
 }
 function addWindowLandscape(roomRoot){
-  const texture=makeParisWindowTexture();
-  const lower=new THREE.Mesh(new THREE.PlaneGeometry(3.28,1.68),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide,depthWrite:false}));
-  lower.name='Paisagem exterior da janela do piso térreo';lower.position.set(0,2.565,-4.914);lower.renderOrder=1;scene.add(lower);
-  const upper=new THREE.Mesh(new THREE.PlaneGeometry(2.28,1.94),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide,depthWrite:false}));
-  upper.name='Paisagem exterior da janela do segundo andar';upper.position.set(0,6.88,-4.912);upper.renderOrder=1;scene.add(upper);
+  // Mantém apenas os elementos da própria janela; a paisagem externa foi removida.
   const glass=new THREE.Mesh(new THREE.PlaneGeometry(3.22,1.64),new THREE.MeshBasicMaterial({color:0xc6d5d9,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false}));
   glass.name='Vidro discreto da janela inferior';glass.position.set(0,2.565,-4.82);glass.renderOrder=5;scene.add(glass);
   makeFoldedCurtain('Cortina superior esquerda',-1.04,6.88,-4.48,.43,1.92,0x74433b);
