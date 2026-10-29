@@ -113,52 +113,73 @@ function attachCandleLighting(roomRoot){
     addCandleLightAt(new THREE.Vector3(-1.05,1.40,-0.28),3.0,4.6,2.22);
   }
 }
-function addDoorCandles(){
-  // Dois candelabros na porta do piso térreo e dois na entrada da galeria superior.
-  // São montados na face interna da parede frontal, fora da largura de passagem.
-  const wax=new THREE.MeshStandardMaterial({color:0xe7d6ae,roughness:.94});
-  const darkMetal=new THREE.MeshStandardMaterial({color:0x30251b,roughness:.72,metalness:.28});
-  const brass=new THREE.MeshStandardMaterial({color:0x8c6231,roughness:.42,metalness:.58});
-  const flameMat=new THREE.MeshBasicMaterial({color:0xff9b31});
-  const flameCoreMat=new THREE.MeshBasicMaterial({color:0xffe6a0});
-  const fixtures=[
-    {label:'primeiro andar',y:1.82,x:2.38,phase:.65},
-    {label:'primeiro andar',y:1.82,x:4.50,phase:2.15},
-    {label:'segundo andar',y:5.30,x:2.38,phase:3.25},
-    {label:'segundo andar',y:5.30,x:4.50,phase:4.55}
+function addWallEndCandles(){
+  // Velas colocadas nas duas extremidades das quatro paredes, em ambos os andares.
+  // As placas ficam junto à parede e as chamas apontam para dentro do cômodo.
+  const wax=new THREE.MeshStandardMaterial({color:0xe8d7b3,roughness:.94});
+  const iron=new THREE.MeshStandardMaterial({color:0x29211a,roughness:.78,metalness:.22});
+  const brass=new THREE.MeshStandardMaterial({color:0x98703b,roughness:.44,metalness:.55});
+  const flameMat=new THREE.MeshBasicMaterial({color:0xff8f28});
+  const coreMat=new THREE.MeshBasicMaterial({color:0xffe5a0});
+  const floors=[
+    {name:'primeiro andar',y:3.62},
+    {name:'segundo andar',y:7.82}
   ];
-  for(const fixture of fixtures){
-    const root=new THREE.Group();
-    root.name='Candelabro de parede — '+fixture.label+' — '+(fixture.x<3?'esquerdo':'direito');
-    root.position.set(fixture.x,fixture.y,4.58);
-    scene.add(root);
+  const walls=[
+    {name:'parede frontal',rotation:0,positions:[[-4.65,4.58],[4.65,4.58]]},
+    {name:'parede do fundo',rotation:Math.PI,positions:[[-4.65,-4.58],[4.65,-4.58]]},
+    {name:'parede lateral esquerda',rotation:-Math.PI/2,positions:[[-5.22,-4.20],[-5.22,4.20]]},
+    {name:'parede lateral direita',rotation:Math.PI/2,positions:[[5.22,-4.20],[5.22,4.20]]}
+  ];
+  let candleIndex=0;
+  for(const floor of floors){
+    for(const wall of walls){
+      for(let end=0;end<wall.positions.length;end++){
+        const [x,z]=wall.positions[end];
+        const root=new THREE.Group();
+        root.name='Candelabro alto — '+floor.name+' — '+wall.name+' — ponta '+(end+1);
+        root.position.set(x,floor.y,z);
+        root.rotation.y=wall.rotation;
+        scene.add(root);
 
-    // Placa de fixação, braço curvo e bandeja metálica.
-    box(root,'Placa de fixação do candelabro',[0,-.025,.22],[.13,.23,.045],darkMetal);
-    box(root,'Detalhe dourado da placa',[0,-.025,.192],[.075,.155,.012],brass);
-    capsuleBetween(root,'Braço de ferro do candelabro',[0,-.075,.205],[0,-.105,.025],.018,darkMetal);
-    const cup=new THREE.Mesh(new THREE.CylinderGeometry(.075,.055,.045,16),brass);
-    cup.name='Bandeja de latão para a cera';cup.position.set(0,-.145,.015);root.add(cup);
+        // Placa fixada à parede, moldura de latão e braço de ferro forjado.
+        box(root,'Placa escura do candelabro',[0,0,.218],[.15,.25,.04],iron);
+        box(root,'Filete de latão da placa',[0,0,.194],[.105,.19,.012],brass);
+        sphere(root,'Cabeça do pino superior',[-.045,.085,.18],[.018,.018,.012],brass);
+        sphere(root,'Cabeça do pino inferior',[.045,-.085,.18],[.018,.018,.012],brass);
+        capsuleBetween(root,'Braço curvo de ferro',[0,-.07,.20],[0,-.10,.035],.018,iron);
+        const tray=new THREE.Mesh(new THREE.CylinderGeometry(.073,.052,.038,16),brass);
+        tray.name='Prato de latão da vela';tray.position.set(0,-.135,.02);root.add(tray);
 
-    // Vela de cera marfim com gotas discretas e chama emissiva.
-    const candle=new THREE.Mesh(new THREE.CylinderGeometry(.052,.061,.285,16),wax);
-    candle.name='Vela de cera junto à porta';candle.position.set(0,-.005,0);root.add(candle);
-    for(let i=0;i<3;i++){
-      const drip=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),wax);
-      drip.name='Gota de cera derretida '+(i+1);
-      drip.scale.set(.015,.034,.015);
-      const a=i*Math.PI*2/3;
-      drip.position.set(Math.cos(a)*.043,.085,Math.sin(a)*.043);
-      root.add(drip);
+        // Vela vertical de cera com pavio e chama visível.
+        const candle=new THREE.Mesh(new THREE.CylinderGeometry(.046,.056,.27,16),wax);
+        candle.name='Vela de cera na ponta da parede';candle.position.set(0,.005,0);root.add(candle);
+        for(let i=0;i<3;i++){
+          const drip=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),wax);
+          drip.name='Gota de cera da vela '+(i+1);
+          drip.scale.set(.014,.031,.014);
+          const a=i*2*Math.PI/3;
+          drip.position.set(Math.cos(a)*.039,.075,Math.sin(a)*.039);
+          root.add(drip);
+        }
+        const wick=new THREE.Mesh(new THREE.CylinderGeometry(.005,.006,.027,8),iron);
+        wick.name='Pavio da vela';wick.position.set(0,.151,0);root.add(wick);
+        const flame=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),flameMat);
+        flame.name='Chama alaranjada do candelabro';
+        flame.scale.set(.029,.062,.028);flame.position.set(0,.198,0);root.add(flame);
+        const core=new THREE.Mesh(new THREE.SphereGeometry(1,12,10),coreMat);
+        core.name='Centro luminoso da chama';core.scale.set(.012,.035,.013);
+        core.position.set(0,.188,-.006);root.add(core);
+
+        root.updateMatrixWorld(true);
+        const flameWorld=root.localToWorld(new THREE.Vector3(0,.20,0));
+        addCandleLightAt(flameWorld,.82,3.25,candleIndex*1.41+.4);
+        candleIndex++;
+      }
     }
-    const flame=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),flameMat);
-    flame.name='Pequena chama alaranjada';flame.scale.set(.034,.066,.032);flame.position.set(0,.187,0);root.add(flame);
-    const core=new THREE.Mesh(new THREE.SphereGeometry(1,12,10),flameCoreMat);
-    core.name='Núcleo dourado da chama';core.scale.set(.015,.038,.016);core.position.set(0,.177,-.008);root.add(core);
-
-    addCandleLightAt(new THREE.Vector3(fixture.x,fixture.y+.19,4.54),1.18,3.8,fixture.phase);
   }
 }
+
 
 function updateCandleLighting(time){
   for(const light of candleLights){
@@ -203,7 +224,7 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   scene.add(room);
   room.updateMatrixWorld(true);
   attachCandleLighting(room);
-  addDoorCandles();
+  addWallEndCandles();
   alignHistoricWindows(room);
   addPascalCharacter();
   addInteractionTargets();
