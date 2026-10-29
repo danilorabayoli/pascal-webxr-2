@@ -142,14 +142,14 @@ function rebuildMathSymbols(roomRoot){
   candidates.forEach((c,index)=>{
     const width=THREE.MathUtils.clamp(Math.max(c.size.x,c.size.z)*.78,.42,1.65);
     const height=THREE.MathUtils.clamp(c.size.y*.78,.42,1.6);
-    const depthAxis=c.size.z>c.size.x*1.15?'z':'x';
+    const depthAxis=c.size.z>c.size.x*1.15?'zy':'xy';
     const points=[];
     if(c.kind==='circle'){
       const r=Math.min(width,height)*.46;
       for(let i=0;i<64;i++){const a=i/64*Math.PI*2;points.push(new THREE.Vector3(Math.sin(a)*r,Math.cos(a)*r,0));}
     }else points.push(new THREE.Vector3(0,height*.48,0),new THREE.Vector3(width*.46,-height*.38,0),new THREE.Vector3(-width*.46,-height*.38,0));
     const group=new THREE.Group();group.name='Diagrama geométrico refeito '+c.kind;group.position.copy(c.center);
-    if(depthAxis==='x'){group.rotation.y=Math.PI/2;group.position.x-=.035;}else group.position.z-=.035;
+    if(depthAxis==='zy'){group.rotation.y=Math.PI/2;group.position.x-=.035;}else group.position.z-=.035;
     group.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xc8a46b,transparent:true,opacity:.98})));
     if(c.kind==='circle'){
       const inner=points.map(v=>v.clone().multiplyScalar(.91));
@@ -457,6 +457,7 @@ enterVRButton.addEventListener('click',async()=>{
   const startSession=async(refType,options)=>{
     renderer.xr.setReferenceSpaceType(refType);
     const s=await navigator.xr.requestSession('immersive-vr',options);
+    xrUsesFloorSpace=(refType==='local-floor');
     try{await renderer.xr.setSession(s);return s;}
     catch(err){try{await s.end();}catch(_e){}throw err;}
   };
