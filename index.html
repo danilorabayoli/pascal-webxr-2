@@ -101,6 +101,7 @@ function attachCandleLighting(roomRoot){
     const position=flame.getWorldPosition(new THREE.Vector3());
     position.y+=0.10;
     if(index<2)addCandleLightAt(position,index===0?3.3:3.0,4.6,index*1.87+0.35);
+    if(index<2){const smokePosition=position.clone();smokePosition.y+=.06;createSmokeEmitter(smokePosition);}
     // Reforça apenas a emissão da malha que já é a chama da vela no modelo.
     flame.traverse(part=>{
       if(!part.isMesh||!part.material)return;
