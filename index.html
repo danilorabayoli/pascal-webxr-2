@@ -156,6 +156,107 @@ function attachCandleLighting(roomRoot){
     addCandleLightAt(new THREE.Vector3(-1.05,1.40,-0.28),3.0,4.6,2.22);
   }
 }
+function addPascalDeskCandleFlames(roomRoot){
+  // Alvo: velas reais sobre a mesa de estudo de Pascal, no primeiro andar.
+  // O GLB nem sempre nomeia essas malhas com a palavra "chama"; por isso detectamos
+  // primeiro os corpos de vela na área da mesa e depois procuramos/recriamos a chama no topo.
+  roomRoot.updateMatrixWorld(true);
+  const meshes=[];
+  roomRoot.traverse(obj=>{if(obj.isMesh&&obj.geometry&&obj.visible)meshes.push(obj);});
+
+  const deskBodies=[];
+  for(const obj of meshes){
+    const bounds=new THREE.Box3().setFromObject(obj);
+    const size=bounds.getSize(new THREE.Vector3());
+    const center=bounds.getCenter(new THREE.Vector3());
+    const name=(obj.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    // Região física do tampo da mesa histórica, não a área dos móveis do segundo andar.
+    if(center.x < -1.58 || center.x > 1.58 || center.z < -1.78 || center.z > .28)continue;
+    if(bounds.min.y < .72 || bounds.min.y > 1.78 || bounds.max.y > 2.08)continue;
+    const horizontal=Math.max(size.x,size.z);
+    const slender=size.y>=.085&&size.y<=.43&&horizontal<=.19&&size.y>=horizontal*1.15;
+    const candleName=/vela|candle|candlestick|chandelle|kerze|wax candle/.test(name);
+    const mats=Array.isArray(obj.material)?obj.material:[obj.material];
+    const paleWax=mats.some(m=>{
+      if(!m||!m.color)return false;
+      const c=m.color;
+      return (c.r+c.g+c.b)/3>.53&&c.r>.48&&c.g>.38&&c.b>.22;
+    });
+    if((candleName&&size.y>.06)||(!candleName&&slender&&paleWax)){
+      deskBodies.push({obj,bounds,center,size,name,top:bounds.max.y});
+    }
+  }
+
+  // Remove duplicatas: alguns GLBs representam uma vela em mais de uma malha.
+  deskBodies.sort((a,b)=>a.center.x-b.center.x||a.center.z-b.center.z);
+  const unique=[];
+  for(const candidate of deskBodies){
+    const duplicate=unique.some(prev=>
+      Math.hypot(prev.center.x-candidate.center.x,prev.center.z-candidate.center.z)<.095&&
+      Math.abs(prev.top-candidate.top)<.12
+    );
+    if(!duplicate)unique.push(candidate);
+  }
+
+  let added=0;
+  for(const candle of unique){
+    const x=candle.center.x,z=candle.center.z,top=candle.top;
+    // Se o modelo já contém uma chama/núcleo no topo da vela, anima essa peça
+    // em vez de criar uma segunda chama sobreposta.
+    let foundFlame=null;
+    for(const other of meshes){
+      if(other===candle.obj)continue;
+      const name=(other.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      const b=new THREE.Box3().setFromObject(other);
+      const c=b.getCenter(new THREE.Vector3());
+      const sz=b.getSize(new THREE.Vector3());
+      if(Math.abs(c.x-x)>.11||Math.abs(c.z-z)>.11)continue;
+      if(b.min.y<top-.035||b.min.y>top+.16||b.max.y>top+.27)continue;
+      const mats=Array.isArray(other.material)?other.material:[other.material];
+      const warm=mats.some(m=>{
+        if(!m||!m.color)return false;
+        const col=m.color;
+        return col.r>.62&&col.g>.12&&col.g<.82&&col.b<.42;
+      });
+      if(/chama|flame|fire|fogo|flamme|fiamma/.test(name)||(warm&&sz.y>sz.x&&sz.y>sz.z)){
+        foundFlame=other;break;
+      }
+    }
+    const phase=2.17+added*1.319;
+    if(foundFlame){
+      registerAnimatedFlame(foundFlame,phase);
+      added++;
+      continue;
+    }
+
+    // Chama em forma de gota (elipsoide leve) colocada diretamente sobre o pavio.
+    const flameHeight=Math.max(.035,Math.min(.075,candle.size.x*.92));
+    const flameWidth=flameHeight*.47;
+    const flame=new THREE.Mesh(
+      new THREE.SphereGeometry(1,12,8),
+      new THREE.MeshBasicMaterial({color:0xff8525})
+    );
+    flame.name='Chama animada — vela da mesa de Blaise Pascal '+(added+1);
+    flame.scale.set(flameWidth,flameHeight,flameWidth*.82);
+    flame.position.set(x,top+flameHeight*.53,z);
+    scene.add(flame);
+    registerAnimatedFlame(flame,phase);
+
+    const core=new THREE.Mesh(
+      new THREE.SphereGeometry(1,10,7),
+      new THREE.MeshBasicMaterial({color:0xffe6a1})
+    );
+    core.name='Núcleo animado — vela da mesa de Blaise Pascal '+(added+1);
+    core.scale.set(flameWidth*.42,flameHeight*.47,flameWidth*.4);
+    core.position.set(x,top+flameHeight*.36,z-.003);
+    scene.add(core);
+    registerAnimatedFlame(core,phase+.43,true);
+    added++;
+  }
+
+  console.info('Velas da mesa de Blaise Pascal com animação de fogo: '+added);
+  if(!added)console.warn('Não encontrei corpos de vela reconhecíveis sobre a mesa de Pascal; nenhuma chama foi posicionada por coordenadas arbitrárias.');
+}
 function registerRemainingSceneFlames(){
   // Varredura final: captura chamas do GLB (inclusive velas de mesas dos dois andares)
   // ou de móveis procedurais que não tenham sido registrados nos seus criadores.
@@ -443,6 +544,7 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
 
 
   addSecondFloorFurniture();
+  addPascalDeskCandleFlames(room);
   addInvisibleFurnitureLighting();
   registerRemainingSceneFlames();
   loaded=true;
