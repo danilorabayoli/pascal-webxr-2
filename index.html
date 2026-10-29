@@ -96,7 +96,6 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   scene.add(room);
   room.updateMatrixWorld(true);
   alignHistoricWindows(room);
-  rebuildMathSymbols(room);
   addPascalCharacter();
   addInteractionTargets();
   addPanorama();
@@ -119,47 +118,12 @@ function addPanorama(){
 }
 function alignHistoricWindows(roomRoot){
   roomRoot.traverse(obj=>{
-    const name=(obj.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-    const glassName=/(vidro|vidros|glass|glazing|windowpane)/.test(name)&&/(janela|window|andar|exterior|azulad)/.test(name);
-    if(glassName){obj.visible=false;return;}
-    if(name==='fundo frio exterior da janela')obj.visible=false;
-  });
-}
-
-function rebuildMathSymbols(roomRoot){
-  roomRoot.updateMatrixWorld(true);
-  const candidates=[],matched=[];
-  roomRoot.traverse(obj=>{
-    const name=(obj.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-    const kind=/triang|triangle/.test(name)?'triangle':(/circul|circle|cercle/.test(name)?'circle':null);
-    if(!kind||!(obj.isMesh||obj.isGroup))return;
-    let ancestor=obj.parent;while(ancestor){if(matched.includes(ancestor))return;ancestor=ancestor.parent;}
-    const bounds=new THREE.Box3().setFromObject(obj);if(bounds.isEmpty())return;
-    const size=new THREE.Vector3();bounds.getSize(size);const center=new THREE.Vector3();bounds.getCenter(center);
-    if(center.y<3.5||Math.max(size.x,size.y,size.z)<.08)return;
-    obj.visible=false;matched.push(obj);candidates.push({kind,center,size});
-  });
-  candidates.forEach((c,index)=>{
-    const width=THREE.MathUtils.clamp(Math.max(c.size.x,c.size.z)*.78,.42,1.65);
-    const height=THREE.MathUtils.clamp(c.size.y*.78,.42,1.6);
-    const depthAxis=c.size.z>c.size.x*1.15?'zy':'xy';
-    const points=[];
-    if(c.kind==='circle'){
-      const r=Math.min(width,height)*.46;
-      for(let i=0;i<64;i++){const a=i/64*Math.PI*2;points.push(new THREE.Vector3(Math.sin(a)*r,Math.cos(a)*r,0));}
-    }else points.push(new THREE.Vector3(0,height*.48,0),new THREE.Vector3(width*.46,-height*.38,0),new THREE.Vector3(-width*.46,-height*.38,0));
-    const group=new THREE.Group();group.name='Diagrama geométrico refeito '+c.kind;group.position.copy(c.center);
-    if(depthAxis==='zy'){group.rotation.y=Math.PI/2;group.position.x-=.035;}else group.position.z-=.035;
-    group.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xc8a46b,transparent:true,opacity:.98})));
-    if(c.kind==='circle'){
-      const inner=points.map(v=>v.clone().multiplyScalar(.91));
-      const second=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(inner),new THREE.LineBasicMaterial({color:0x8e7145,transparent:true,opacity:.6}));second.position.z=.008;group.add(second);
-      const dot=new THREE.Mesh(new THREE.SphereGeometry(.022,12,8),mat(0x241b12,.9));dot.position.set(0,0,.012);group.add(dot);
-    }else{
-      const median=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,height*.48,.006),new THREE.Vector3(0,-height*.38,.006)]),new THREE.LineBasicMaterial({color:0x9d855f,transparent:true,opacity:.72}));group.add(median);
-      const dot=new THREE.Mesh(new THREE.SphereGeometry(.022,12,8),mat(0x241b12,.9));dot.position.set(0,-height*.10,.012);group.add(dot);
+    if(obj.name==='Fundo frio exterior da janela')obj.visible=false;
+    if(obj.name==='Segundo andar - vidros azulados da janela'&&obj.material){
+      const orig=Array.isArray(obj.material)?obj.material:[obj.material];
+      const translucent=orig.map(old=>{const m=old.clone();m.transparent=true;m.opacity=.24;m.depthWrite=false;if(m.roughness!==undefined)m.roughness=.22;m.side=THREE.DoubleSide;m.needsUpdate=true;return m;});
+      obj.material=Array.isArray(obj.material)?translucent:translucent[0];obj.renderOrder=4;
     }
-    group.traverse(o=>{o.renderOrder=8;});scene.add(group);
   });
 }
 function makeParisWindowTexture(){
@@ -186,21 +150,17 @@ function makeParisWindowTexture(){
 }
 function addWindowLandscape(roomRoot){
   const texture=makeParisWindowTexture();
-  // Painéis de paisagem posicionados nas aberturas. Não é criado nenhum vidro.
-  const lower=new THREE.Mesh(new THREE.PlaneGeometry(2.78,1.43),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide,depthWrite:false}));
-  lower.name='Paisagem de Paris na janela inferior';lower.position.set(0,2.565,-4.76);lower.renderOrder=1;scene.add(lower);
-  const upper=new THREE.Mesh(new THREE.PlaneGeometry(1.92,1.62),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide,depthWrite:false}));
-  upper.name='Paisagem de Paris na janela superior';upper.position.set(0,6.88,-4.76);upper.renderOrder=1;scene.add(upper);
-  makeFoldedCurtain('Cortina inferior esquerda',-.92,2.565,-4.53,.38,1.55,0x70413b);
-  makeFoldedCurtain('Cortina inferior direita',.92,2.565,-4.53,.38,1.55,0x70413b);
-  box(scene,'Varão de latão da janela inferior',[0,3.45,-4.54],[2.92,.045,.045],mat(0x876334,.42,.55));
-  for(const x of [-1.42,1.42])sphere(scene,'Ponteira do varão inferior',[x,3.45,-4.54],[.055,.055,.055],mat(0x9b773e,.4,.55));
-  makeFoldedCurtain('Cortina superior esquerda',-1.04,6.88,-4.53,.40,1.82,0x70413b);
-  makeFoldedCurtain('Cortina superior direita',1.04,6.88,-4.53,.40,1.82,0x70413b);
-  box(scene,'Varão dourado da janela superior',[0,7.99,-4.54],[2.85,.055,.055],mat(0x876334,.42,.55));
-  for(const x of [-1.36,1.36])sphere(scene,'Ponteira do varão superior',[x,7.99,-4.54],[.07,.07,.07],mat(0x9b773e,.4,.55));
+  const lower=new THREE.Mesh(new THREE.PlaneGeometry(3.28,1.68),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide,depthWrite:false}));
+  lower.name='Paisagem exterior da janela do piso térreo';lower.position.set(0,2.565,-4.914);lower.renderOrder=1;scene.add(lower);
+  const upper=new THREE.Mesh(new THREE.PlaneGeometry(2.28,1.94),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide,depthWrite:false}));
+  upper.name='Paisagem exterior da janela do segundo andar';upper.position.set(0,6.88,-4.912);upper.renderOrder=1;scene.add(upper);
+  const glass=new THREE.Mesh(new THREE.PlaneGeometry(3.22,1.64),new THREE.MeshPhysicalMaterial({color:0xc6d5d9,transparent:true,opacity:.075,roughness:.18,metalness:0,side:THREE.DoubleSide,depthWrite:false}));
+  glass.name='Vidro discreto da janela inferior';glass.position.set(0,2.565,-4.82);glass.renderOrder=5;scene.add(glass);
+  makeFoldedCurtain('Cortina superior esquerda',-1.04,6.88,-4.48,.43,1.92,0x74433b);
+  makeFoldedCurtain('Cortina superior direita',1.04,6.88,-4.48,.43,1.92,0x74433b);
+  box(scene,'Varão dourado da janela superior',[0,7.99,-4.50],[2.85,.055,.055],mat(0x876334,.42,.55));
+  for(const x of [-1.36,1.36])sphere(scene,'Ponteira do varão superior',[x,7.99,-4.50],[.07,.07,.07],mat(0x9b773e,.4,.55));
 }
-
 function makeFoldedCurtain(name,centerX,centerY,z,width,height,color){
   const cols=24,vertices=[],uvs=[],indices=[];
   for(let i=0;i<=cols;i++){
@@ -238,80 +198,58 @@ function sphere(parent,name,pos,size,material){const mesh=new THREE.Mesh(new THR
 function capsuleBetween(parent,name,a,b,radius,material){const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),dir=B.clone().sub(A);const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,dir.length(),12),material);mesh.name=name;mesh.position.copy(A).add(B).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());parent.add(mesh);sphere(parent,name+' joint A',a,[radius,radius,radius],material);sphere(parent,name+' joint B',b,[radius,radius,radius],material)}
 
 function addPascalCharacter(){
-  // Blaise Pascal c. 1650: rosto jovem sem barba, cachos longos, casaca escura e gola de linho.
-  const p=new THREE.Group();p.name='Blaise_Pascal_interativo_detalhado';p.position.set(0,0,-1.72);p.rotation.y=Math.PI;scene.add(p);pascalCharacter=p;
-  const coat=mat(0x171615,.97),edge=mat(0x31271d,.95),breeches=mat(0x24211e,.97);
-  const skin=mat(0xcda989,.91),skinLight=mat(0xe0bea0,.9),skinShade=mat(0xa8795e,.94);
-  const hair=mat(0x1a120d,.98),hair2=mat(0x332217,.96),hair3=mat(0x49301f,.95);
-  const linen=mat(0xe9e0ce,.94),lace=mat(0xf4ead8,.96),brass=mat(0x97713b,.46,.48);
-  const whites=mat(0xe6d9c6,.65),iris=mat(0x4a3020,.6),pupil=mat(0x110d0a,.42),shoe=mat(0x100e0c,.9);
-  const ell=(name,pos,scale,material,seg=32)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(1,seg,Math.max(16,Math.floor(seg*.72))),material);m.name=name;m.position.set(...pos);m.scale.set(...scale);p.add(m);return m;};
-  const line=(name,points,radius,material)=>{const curve=new THREE.CatmullRomCurve3(points.map(v=>new THREE.Vector3(...v)));const m=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(12,points.length*5),radius,8,false),material);m.name=name;p.add(m);return m;};
-  const capsule=(name,a,b,r,material)=>capsuleBetween(p,name,a,b,r,material);
-  // Botas, solados e meias.
-  ell('Bota esquerda',[-.155,.09,-.055],[.13,.095,.19],shoe);ell('Bota direita',[.155,.09,-.055],[.13,.095,.19],shoe);
-  box(p,'Solado esquerdo',[-.155,.043,-.055],[.25,.026,.35],mat(0x080706,.92));box(p,'Solado direito',[.155,.043,-.055],[.25,.026,.35],mat(0x080706,.92));
-  capsule('Meia de linho esquerda',[-.155,.15,.01],[-.155,.48,.01],.068,linen);capsule('Meia de linho direita',[.155,.15,.01],[.155,.48,.01],.068,linen);
-  ell('Calções de lã',[0,.60,.015],[.285,.22,.19],breeches);ell('Joelho esquerdo',[-.15,.48,.015],[.13,.13,.15],breeches);ell('Joelho direito',[.15,.48,.015],[.13,.13,.15],breeches);
-  line('Costura frontal dos calções',[[0,.73,-.165],[0,.61,-.188],[0,.49,-.13]],.006,edge);
-  // Casaca em volumes arredondados, lapelas, costuras e bordados.
-  ell('Corpo principal da casaca',[0,1.00,.01],[.335,.43,.225],coat);ell('Peito da casaca',[0,1.19,.015],[.31,.24,.215],coat);
-  box(p,'Frente estruturada da casaca',[0,1.00,-.156],[.36,.56,.058],coat);
-  ell('Ombro esquerdo',[-.265,1.23,.005],[.19,.145,.205],coat);ell('Ombro direito',[.265,1.23,.005],[.19,.145,.205],coat);
-  ell('Cauda esquerda da casaca',[-.15,.70,.01],[.15,.29,.19],coat);ell('Cauda direita da casaca',[.15,.70,.01],[.15,.29,.19],coat);
-  line('Lapela esquerda',[[-.17,1.34,-.17],[-.12,1.18,-.205],[-.10,1.02,-.196]],.012,edge);
-  line('Lapela direita',[[.17,1.34,-.17],[.12,1.18,-.205],[.10,1.02,-.196]],.012,edge);
-  line('Bordado esquerdo',[[-.205,1.12,-.186],[-.19,.91,-.18],[-.18,.78,-.16]],.006,brass);
-  line('Bordado direito',[[.205,1.12,-.186],[.19,.91,-.18],[.18,.78,-.16]],.006,brass);
-  for(let i=0;i<7;i++){const y=1.28-i*.09;ell('Botão de latão '+i,[.025,y,-.208],[.018,.021,.009],brass,20);ell('Centro do botão '+i,[.025,y,-.217],[.006,.007,.003],edge,12);}
-  for(const s of [-1,1]){
-    capsule('Braço superior '+s,[s*.27,1.25,.01],[s*.35,1.05,-.095],.083,coat);capsule('Antebraço '+s,[s*.35,1.05,-.095],[s*.29,.91,-.235],.064,coat);
-    ell('Punho de linho '+s,[s*.29,.91,-.25],[.082,.064,.052],linen);
-    for(let j=0;j<5;j++){const a=Math.PI*2*j/5;ell('Dobra de renda do punho '+s+'-'+j,[s*.29+Math.cos(a)*.065,.91+Math.sin(a)*.045,-.28],[.025,.026,.018],lace,18);}
-    ell('Mão '+s,[s*.29,.84,-.30],[.058,.077,.044],skinLight);
-    for(let f=0;f<4;f++){const fx=s*(.255+f*.023);capsule('Dedo '+s+'-'+f,[fx,.83,-.325],[fx+s*.006,.785-(f===1?.018:0),-.33],.012,skin);}
-    capsule('Polegar '+s,[s*.245,.85,-.31],[s*.222,.81,-.334],.016,skin);
+  // Retrato procedural inspirado no retrato atribuído a Pascal por volta de 1650:
+  // cabelo castanho-escuro até os ombros, rosto sem barba, casaca escura e gola branca.
+  const p=new THREE.Group();p.name='Blaise_Pascal_interativo';p.position.set(0,0,-1.72);p.rotation.y=Math.PI;scene.add(p);pascalCharacter=p;
+  const coat=mat(0x191816,.94),coatEdge=mat(0x302820,.9),breeches=mat(0x292522,.95);
+  const skin=mat(0xd0ad8b,.88),skinShade=mat(0xb88f70,.9),hair=mat(0x211711,.96),hairLight=mat(0x34251a,.94);
+  const linen=mat(0xe9e0cd,.9),lace=mat(0xf1e9d9,.92),brass=mat(0x9b773e,.4,.5),eye=mat(0x251911,.5),shoe=mat(0x17130f,.88);
+  box(p,'Sapato esquerdo',[-.16,.075,-.045],[.22,.10,.31],shoe,[0,-.05,0]);
+  box(p,'Sapato direito',[.16,.075,-.045],[.22,.10,.31],shoe,[0,.05,0]);
+  capsuleBetween(p,'Meia esquerda',[-.16,.15,.015],[-.16,.48,.015],.075,linen);
+  capsuleBetween(p,'Meia direita',[.16,.15,.015],[.16,.48,.015],.075,linen);
+  box(p,'Calções históricos',[0,.61,.015],[.54,.34,.33],breeches);
+  box(p,'Aba esquerda dos calções',[-.16,.49,-.01],[.23,.18,.31],breeches,[0,0,-.04]);
+  box(p,'Aba direita dos calções',[.16,.49,-.01],[.23,.18,.31],breeches,[0,0,.04]);
+  sphere(p,'Torso da casaca',[0,1.00,.01],[.34,.47,.22],coat);
+  box(p,'Frente da casaca',[0,1.00,-.145],[.48,.66,.075],coat);
+  sphere(p,'Ombro esquerdo',[-.27,1.24,.0],[.20,.16,.24],coat);
+  sphere(p,'Ombro direito',[.27,1.24,.0],[.20,.16,.24],coat);
+  box(p,'Cauda esquerda da casaca',[-.16,.70,.015],[.22,.43,.25],coat,[0,0,-.08]);
+  box(p,'Cauda direita da casaca',[.16,.70,.015],[.22,.43,.25],coat,[0,0,.08]);
+  box(p,'Lapela esquerda',[-.095,1.16,-.19],[.16,.39,.035],coatEdge,[0,0,-.15]);
+  box(p,'Lapela direita',[.095,1.16,-.19],[.16,.39,.035],coatEdge,[0,0,.15]);
+  for(let i=0;i<5;i++)sphere(p,'Botão de latão '+i,[.015,1.22-i*.12,-.205],[.021,.021,.012],brass);
+  const lA=[[-.27,1.24,.01],[-.36,1.03,-.12],[-.28,.90,-.27]],rA=[[.27,1.24,.01],[.36,1.03,-.12],[.28,.90,-.27]];
+  capsuleBetween(p,'Manga superior esquerda',lA[0],lA[1],.085,coat);capsuleBetween(p,'Manga inferior esquerda',lA[1],lA[2],.069,coat);
+  capsuleBetween(p,'Manga superior direita',rA[0],rA[1],.085,coat);capsuleBetween(p,'Manga inferior direita',rA[1],rA[2],.069,coat);
+  box(p,'Punho branco esquerdo',[-.28,.91,-.27],[.13,.095,.09],linen);box(p,'Punho branco direito',[.28,.91,-.27],[.13,.095,.09],linen);
+  sphere(p,'Mão esquerda',[-.28,.86,-.33],[.075,.085,.075],skin);sphere(p,'Mão direita',[.28,.86,-.33],[.075,.085,.075],skin);
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.085,.095,.17,16),skin);neck.position.set(0,1.36,0);p.add(neck);
+  sphere(p,'Gola branca central',[0,1.31,-.17],[.25,.12,.10],linen);
+  for(let i=0;i<13;i++){const a=Math.PI+Math.PI*i/12;const x=Math.cos(a)*.25;const z=-.06+Math.sin(a)*.095;sphere(p,'Dobra de renda da gola '+i,[x,1.29+Math.sin(a)*.045,z],[.055,.055,.035],lace);}
+  box(p,'Camisa clara',[0,1.28,-.17],[.18,.20,.055],linen);
+  sphere(p,'Rosto de Blaise Pascal',[0,1.59,-.005],[.30,.405,.265],skin);
+  sphere(p,'Testa',[0,1.72,-.12],[.235,.16,.115],skin);
+  for(const side of [-1,1]){
+    sphere(p,'Orelha '+side,[side*.285,1.58,-.005],[.055,.085,.045],skinShade);
+    sphere(p,'Olho '+side,[side*.083,1.625,-.235],[.047,.028,.018],linen);
+    sphere(p,'Íris '+side,[side*.083,1.625,-.251],[.022,.023,.011],hairLight);
+    sphere(p,'Pupila '+side,[side*.083,1.625,-.26],[.010,.013,.006],eye);
+    box(p,'Sobrancelha '+side,[side*.083,1.67,-.235],[.075,.014,.018],hair,[0,0,-side*.05]);
+    sphere(p,'Cabelo lateral superior '+side,[side*.27,1.61,.0],[.13,.30,.20],hair);
+    sphere(p,'Cabelo lateral médio '+side,[side*.30,1.42,.015],[.13,.25,.20],hair);
+    sphere(p,'Cabelo até o ombro '+side,[side*.26,1.23,.035],[.125,.22,.18],hair);
+    for(let j=0;j<4;j++)sphere(p,'Cacho '+side+'-'+j,[side*(.29+.015*(j%2)),1.48-j*.085,-.035],[.07,.075,.065],j%2?hair:hairLight);
   }
-  // Pescoço, camisa e gola larga com pregas de renda.
-  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.075,.095,.18,24),skin);neck.position.set(0,1.36,-.005);neck.name='Pescoço';p.add(neck);
-  ell('Camisa de linho',[0,1.29,-.155],[.16,.19,.065],linen);ell('Gola branca ampla',[0,1.31,-.175],[.245,.115,.085],linen);
-  line('Borda da gola',[[-.25,1.30,-.19],[-.17,1.235,-.245],[0,1.215,-.255],[.17,1.235,-.245],[.25,1.30,-.19]],.012,lace);
-  for(let i=0;i<19;i++){const t=i/18,x=-.235+t*.47,y=1.315-.078*Math.sin(Math.PI*t),z=-.222-.018*Math.sin(Math.PI*t);ell('Prega de renda '+i,[x,y,z],[.022,.037,.019],i%2?lace:linen,20);}
-  line('Fita do pescoço',[[-.12,1.39,-.105],[0,1.37,-.17],[.12,1.39,-.105]],.018,lace);
-  // Rosto com maxilar, maçãs, pálpebras e detalhes discretos.
-  ell('Rosto de Blaise Pascal',[0,1.595,-.005],[.266,.365,.232],skin,48);ell('Mandíbula',[0,1.445,-.045],[.205,.185,.195],skin,40);ell('Queixo',[0,1.405,-.125],[.115,.075,.085],skinLight,32);
-  ell('Têmpora esquerda',[-.205,1.63,-.015],[.065,.14,.11],skin);ell('Têmpora direita',[.205,1.63,-.015],[.065,.14,.11],skin);
-  ell('Maçã esquerda',[-.157,1.535,-.164],[.075,.10,.052],skinLight);ell('Maçã direita',[.157,1.535,-.164],[.075,.10,.052],skinLight);
-  ell('Sombra sob olho esquerdo',[-.082,1.572,-.211],[.065,.023,.012],skinShade,24);ell('Sombra sob olho direito',[.082,1.572,-.211],[.065,.023,.012],skinShade,24);
-  for(const s of [-1,1]){
-    ell('Orelha '+s,[s*.258,1.59,-.004],[.052,.083,.043],skinShade);ell('Lóbulo '+s,[s*.263,1.55,-.008],[.026,.032,.026],skin);
-    ell('Pálpebra inferior '+s,[s*.079,1.594,-.229],[.052,.021,.016],skinShade,24);ell('Olho '+s,[s*.079,1.607,-.235],[.045,.027,.018],whites,32);
-    ell('Íris '+s,[s*.079,1.607,-.252],[.020,.021,.009],iris,24);ell('Pupila '+s,[s*.079,1.608,-.260],[.009,.012,.005],pupil,20);
-    ell('Brilho do olho '+s,[s*.073,1.615,-.265],[.004,.005,.003],whites,12);
-    line('Pálpebra superior '+s,[[s*.035,1.61,-.241],[s*.079,1.637,-.245],[s*.123,1.61,-.241]],.008,skinShade);
-    line('Sobrancelha '+s,[[s*.035,1.668,-.228],[s*.075,1.681,-.24],[s*.12,1.666,-.226]],.012,hair);
-  }
-  capsule('Ponte do nariz',[0,1.64,-.23],[0,1.545,-.287],.026,skinLight);
-  ell('Ponta do nariz',[0,1.54,-.292],[.040,.033,.034],skinLight,32);ell('Aba nasal esquerda',[-.029,1.535,-.274],[.023,.019,.022],skin,24);ell('Aba nasal direita',[.029,1.535,-.274],[.023,.019,.022],skin,24);
-  ell('Narina esquerda',[-.021,1.529,-.295],[.009,.006,.005],skinShade,16);ell('Narina direita',[.021,1.529,-.295],[.009,.006,.005],skinShade,16);
-  ell('Lábio superior',[0,1.475,-.239],[.052,.012,.014],skinShade,24);ell('Lábio inferior',[0,1.457,-.237],[.043,.012,.013],skinLight,24);
-  line('Contorno da boca',[[-.05,1.466,-.25],[0,1.463,-.253],[.05,1.466,-.25]],.004,skinShade);
-  // Muitos cachos com volume e pequenos reflexos, em vez de uma peça lisa de cabelo.
-  ell('Massa de cabelo atrás da cabeça',[0,1.62,.13],[.31,.39,.19],hair,40);ell('Cobertura superior do cabelo',[0,1.84,.015],[.31,.14,.25],hair,40);
-  const curlMats=[hair,hair2,hair3];
-  for(const s of [-1,1]){
-    for(let row=0;row<9;row++){
-      const y=1.80-row*.078,x=s*(.245+Math.sin(row*.7)*.025),z=-.085+Math.sin(row*1.1)*.035;
-      const curl=new THREE.Mesh(new THREE.TorusGeometry(.043+(row%3)*.003,.018,8,16),curlMats[row%3]);curl.name='Cacho lateral '+s+'-'+row;curl.position.set(x,y,z);curl.rotation.z=s*.18;curl.rotation.y=s*.12;p.add(curl);
-      ell('Ponta ondulada '+s+'-'+row,[x+s*.016,y-.035,z+.006],[.038,.046,.036],curlMats[(row+1)%3],22);
-    }
-    for(let row=0;row<5;row++){const y=1.38-row*.055,x=s*(.25+row*.006);ell('Mecha até o ombro '+s+'-'+row,[x,y,.01],[.075,.11,.085],curlMats[(row+1)%3],28);}
-  }
-  for(let i=0;i<11;i++){const x=-.25+i*.05,y=1.82+Math.sin(i*1.3)*.025;const curl=new THREE.Mesh(new THREE.TorusGeometry(.040,.017,8,15),curlMats[i%3]);curl.name='Cacho frontal '+i;curl.position.set(x,y,-.17);curl.rotation.z=(i-5)*.045;p.add(curl);}
-  for(let i=0;i<6;i++){const x=-.18+i*.072;ell('Onda no alto do cabelo '+i,[x,1.88+Math.sin(i*1.2)*.018,-.035],[.055,.06,.06],curlMats[i%3],24);}
+  sphere(p,'Nariz',[0,1.575,-.285],[.048,.10,.055],skinShade);
+  sphere(p,'Ponta do nariz',[0,1.55,-.31],[.042,.035,.03],skin);
+  box(p,'Boca',[0,1.49,-.251],[.075,.012,.012],skinShade);
+  sphere(p,'Cabelo superior',[0,1.86,.015],[.35,.19,.30],hair);
+  sphere(p,'Cabelo atrás',[0,1.60,.16],[.34,.43,.17],hair);
+  for(let i=0;i<9;i++){const x=-.28+i*.07;sphere(p,'Onda do cabelo '+i,[x,1.82+Math.sin(i*1.3)*.025,-.015],[.07,.10,.075],i%2?hair:hairLight);}
   p.userData.interaction='pascal';
 }
-
 
 function addInteractionTargets(){
   const invisible=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide});
@@ -429,7 +367,7 @@ document.addEventListener('pointerlockchange',()=>{pointerLocked=document.pointe
 document.addEventListener('mousemove',e=>{if(!pointerLocked||renderer.xr.isPresenting||dialogStage>=0)return;camera.rotation.y-=e.movementX*.0022;pitch=THREE.MathUtils.clamp(pitch-e.movementY*.0022,-1.42,1.42);camera.rotation.x=pitch});
 document.addEventListener('keydown',e=>{keyState.add(e.code);if(e.code==='Escape'){if(dialogStage>=0)closeDialogue();else if(pointerLocked)document.exitPointerLock?.()}if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});
 document.addEventListener('keyup',e=>keyState.delete(e.code));
-document.querySelector('#resetView').addEventListener('click',()=>{rig.position.set(0,0,3.65);rig.rotation.set(0,0,0);activeFloorY=0;onStairs=false;snapTurnCooldown=0;camera.position.set(0,renderer.xr.isPresenting?(xrUsesFloorSpace?0:1.62):1.62,0);camera.rotation.set(0,0,0);pitch=0;closeDialogue()});
+document.querySelector('#resetView').addEventListener('click',()=>{rig.position.set(0,0,3.65);rig.rotation.set(0,0,0);activeFloorY=0;onStairs=false;camera.position.set(0,renderer.xr.isPresenting?0:1.62,0);camera.rotation.set(0,0,0);pitch=0;closeDialogue()});
 
 const controllers=[];
 for(let i=0;i<2;i++){
@@ -451,38 +389,23 @@ function updateXRMovement(delta){if(!renderer.xr.isPresenting||dialogStage>=0)re
 function updateDesktopMovement(delta){if(renderer.xr.isPresenting||dialogStage>=0||!loaded)return;let side=Number(keyState.has('KeyD')||keyState.has('ArrowRight'))-Number(keyState.has('KeyA')||keyState.has('ArrowLeft'));let forwardInput=Number(keyState.has('KeyW')||keyState.has('ArrowUp'))-Number(keyState.has('KeyS')||keyState.has('ArrowDown'));if(!side&&!forwardInput)return;camera.getWorldDirection(tempForward);tempForward.y=0;tempForward.normalize();tempRight.crossVectors(tempForward,up).normalize();tempMove.set(0,0,0).addScaledVector(tempRight,side).addScaledVector(tempForward,forwardInput);if(tempMove.lengthSq()>1)tempMove.normalize();moveRig(tempMove.x*2.3*delta,tempMove.z*2.3*delta)}
 
 enterVRButton.addEventListener('click',async()=>{
-  if(!navigator.xr){statusEl.textContent='Este navegador não disponibiliza WebXR. Abra o link HTTPS no navegador do Meta Quest 3.';return;}
-  enterVRButton.disabled=true;statusEl.textContent='Verificando suporte à realidade virtual…';
-  let session=null,usingFloor=true;
-  const startSession=async(refType,options)=>{
-    renderer.xr.setReferenceSpaceType(refType);
-    const s=await navigator.xr.requestSession('immersive-vr',options);
-    xrUsesFloorSpace=(refType==='local-floor');
-    try{await renderer.xr.setSession(s);return s;}
-    catch(err){try{await s.end();}catch(_e){}throw err;}
-  };
+  if(!navigator.xr){statusEl.textContent='Este navegador não disponibiliza WebXR. Abra no navegador do Meta Quest 3.';return}
+  enterVRButton.disabled=true;statusEl.textContent='Solicitando sessão de realidade virtual…';
+  let session=null;
   try{
-    const supported=await navigator.xr.isSessionSupported('immersive-vr');
-    if(!supported)throw new Error('Este navegador não oferece immersive-vr.');
-    try{session=await startSession('local-floor',{optionalFeatures:['local-floor']});usingFloor=true;}
-    catch(floorError){
-      console.warn('local-floor falhou; tentando sessão VR mínima sem recursos opcionais.',floorError);
-      session=await startSession('local',undefined);usingFloor=false;
-    }
-  }catch(error){
-    console.error('Falha ao iniciar WebXR:',error);
-    statusEl.textContent='Erro ao iniciar VR: '+(error.message||String(error))+' — confirme HTTPS e se o Quest está com o navegador em primeiro plano.';
-    enterVRButton.disabled=false;return;
+    const supported=await navigator.xr.isSessionSupported('immersive-vr');if(!supported)throw new Error('Este navegador não oferece immersive-vr.');
+    renderer.xr.setReferenceSpaceType('local-floor');
+    session=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor','hand-tracking']});
+    xrUsesFloorSpace=true;
+    await renderer.xr.setSession(session);
+  }catch(firstError){
+    console.warn('Tentativa com local-floor falhou; testando referência local.',firstError);
+    try{if(session&&session.end)await session.end();renderer.xr.setReferenceSpaceType('local');session=await navigator.xr.requestSession('immersive-vr');xrUsesFloorSpace=false;await renderer.xr.setSession(session)}catch(secondError){console.error(secondError);statusEl.textContent='Não foi possível iniciar o VR: '+(secondError.message||secondError);enterVRButton.disabled=false;return}
   }
-  xrSession=session;xrUsesFloorSpace=usingFloor;
-  statusEl.textContent=usingFloor?'VR ativo. Analógico esquerdo anda; direito gira em passos de 30°.':'VR ativo em modo de compatibilidade. Analógico esquerdo anda; direito gira em passos de 30°.';
-  session.addEventListener('end',()=>{
-    xrSession=null;camera.position.set(0,1.62,0);rig.position.y=0;activeFloorY=0;onStairs=false;
-    enterVRButton.disabled=false;enterVRButton.textContent='Entrar em VR';statusEl.textContent='Sessão VR encerrada. Você pode entrar novamente.';closeDialogue();
-  },{once:true});
+  xrSession=session;statusEl.textContent='VR ativo. Analógico esquerdo anda; direito gira em passos de 30°.';
+  session.addEventListener('end',()=>{xrSession=null;camera.position.set(0,1.62,0);rig.position.y=0;activeFloorY=0;onStairs=false;enterVRButton.disabled=false;enterVRButton.textContent='Entrar em VR';statusEl.textContent='Sessão VR encerrada. Você pode entrar novamente.';closeDialogue()},{once:true});
   enterVRButton.textContent='VR ativo';
 });
-
 
 function updateControllerPointers(){if(!renderer.xr.isPresenting)return;for(const controller of controllers){if(controller.userData.handedness!=='right')continue;const origin=controller.getWorldPosition(new THREE.Vector3());const direction=new THREE.Vector3(0,0,-1).applyQuaternion(controller.getWorldQuaternion(new THREE.Quaternion())).normalize();raycaster.set(origin,direction);raycaster.far=8.5;const hits=raycaster.intersectObjects(interactables,false);const distance=hits.length?Math.min(hits[0].distance,5):5;const line=controller.userData.rayLine;if(line)line.geometry.setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-distance)]);if(controller.userData.reticle)controller.userData.reticle.position.set(0,0,-distance)}}
 function animate(){const delta=Math.min(clock.getDelta(),.05);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers();renderer.render(scene,camera)}
