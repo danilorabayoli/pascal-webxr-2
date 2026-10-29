@@ -471,15 +471,15 @@ function addSecondFloorFurniture(){
     const candleWax=mat(0xe8d9bb,.96);
     for(const cx of [-.52,.55]){
       const holder=new THREE.Mesh(new THREE.CylinderGeometry(.07,.055,.035,12),brass);
-      holder.position.set(cx,.90,-.035);root.add(holder);
+      holder.position.set(cx,.83,-.035);root.add(holder);
       const candle=new THREE.Mesh(new THREE.CylinderGeometry(.038,.045,.20,12),candleWax);
-      candle.position.set(cx,1.015,-.035);root.add(candle);
+      candle.position.set(cx,.945,-.035);root.add(candle);
       const flame=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),new THREE.MeshBasicMaterial({color:0xff982f}));
-      flame.name='Chama da vela do movel superior';flame.scale.set(.018,.043,.018);flame.position.set(cx,1.15,-.035);root.add(flame);
+      flame.name='Chama da vela do movel superior';flame.scale.set(.018,.043,.018);flame.position.set(cx,1.08,-.035);root.add(flame);
       const wick=new THREE.Mesh(new THREE.CylinderGeometry(.003,.004,.018,6),mat(0x30241b,.8));
-      wick.position.set(cx,1.124,-.035);root.add(wick);
+      wick.position.set(cx,1.054,-.035);root.add(wick);
       root.updateMatrixWorld(true);
-      const flamePos=root.localToWorld(new THREE.Vector3(cx,1.16,-.035));
+      const flamePos=root.localToWorld(new THREE.Vector3(cx,1.09,-.035));
       if(cx<0)addCandleLightAt(flamePos,.42,1.65,i*.8+.3);
       if(cx<0)createSmokeEmitter(flamePos);
     }
