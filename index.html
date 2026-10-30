@@ -741,10 +741,22 @@ function addGoldenMathExperimentLighting(root){
   ];
   const original=new Map();
   root.traverse(obj=>{if(obj.isMesh&&replaceNames.includes(obj.name))original.set(obj.name,obj);});
-  if(replaceNames.some(name=>!original.has(name))){
-    console.warn('Não encontrei todas as peças originais; mantendo o experimento sem substituição.');
+  // Somente as cinco peças geométricas principais são obrigatórias.
+  // Suportes e base variam de nome entre versões do GLB e não podem cancelar a atualização.
+  const requiredNames=[
+    'Modelo geométrico 3D - aro circular',
+    'Modelo geométrico 3D - raio do círculo',
+    'Modelo geométrico 3D - cateto a',
+    'Modelo geométrico 3D - cateto b',
+    'Modelo geométrico 3D - hipotenusa c'
+  ];
+  const missing=requiredNames.filter(name=>!original.has(name));
+  if(missing.length){
+    console.warn('Peças principais não localizadas no GLB:',missing);
     return;
   }
+  const optionalMissing=replaceNames.filter(name=>!requiredNames.includes(name)&&!original.has(name));
+  if(optionalMissing.length)console.info('Peças opcionais não encontradas; prosseguindo:',optionalMissing);
 
   const group=new THREE.Group();
   group.name='Modelos matemáticos reconstruídos';
@@ -837,7 +849,7 @@ function addGoldenMathExperimentLighting(root){
   });
 
   // Só depois da reconstrução estar pronta, ocultamos as malhas antigas.
-  for(const name of replaceNames)original.get(name).visible=false;
+  for(const obj of original.values())obj.visible=false;
 
   // Luzes discretas e localizadas, sem sombras dinâmicas pesadas para o Quest 3.
   const circleLight=new THREE.PointLight(0xffbd70,.34,1.8,2);
