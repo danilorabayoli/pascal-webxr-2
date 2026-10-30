@@ -368,7 +368,7 @@ function addWallEndCandles(){
 
         root.updateMatrixWorld(true);
         const flameWorld=root.localToWorld(new THREE.Vector3(0,.20,0));
-        if(end===0&&candleIndex%4===0)addCandleLightAt(flameWorld,1.02,3.35,candleIndex*1.41+.4);
+        if(end===0&&candleIndex%8===0)addCandleLightAt(flameWorld,1.12,3.65,candleIndex*1.41+.4);
         candleIndex++;
       }
     }
@@ -543,7 +543,7 @@ function createOriginalBaroqueBuffer(context){
     if(barIndex%2===1)addVoice(bar.root+12,origin+3.02,.85,.012,'alaude');
   });
   // Fade circular nas extremidades: o buffer começa e termina em silêncio, sem clique.
-  const fade=Math.floor(sampleRate*.38);
+  const fade=Math.floor(sampleRate*.10);
   for(let i=0;i<fade;i++){
     const t=i/(fade-1),inGain=Math.sin(t*Math.PI*.5),outGain=Math.cos(t*Math.PI*.5);
     samples[i]*=inGain;samples[total-fade+i]*=outGain;
@@ -913,22 +913,6 @@ function makeHistoricCurtainPanel(parent,name,cx,topY,bottomY,width,baseZ,clothM
   const panel=new THREE.Mesh(geometry,clothMaterial);panel.name=name;panel.frustumCulled=true;panel.renderOrder=3;parent.add(panel);
   const lining=new THREE.Mesh(geometry.clone(),liningMaterial);lining.name=name+' — forro';lining.position.z-=.008;lining.renderOrder=2;parent.add(lining);
 }
-function addInvisibleFurnitureLighting(){
-  // Luzes de apoio sob os principais conjuntos de móveis; menos fontes dinâmicas
-  // reduzem o custo de iluminação por pixel no Quest, mantendo o brilho no piso.
-  const placements=[
-    {name:'luz invisível sob a mesa de estudo',position:[0,.10,-.72],color:0xffd1a0,intensity:.52,distance:2.0},
-    {name:'luz invisível sob os móveis centrais do andar superior',position:[-.05,4.43,3.66],color:0xffd0a0,intensity:.46,distance:1.9}
-  ];
-  for(const placement of placements){
-    const light=new THREE.PointLight(placement.color,placement.intensity,placement.distance,2);
-    light.name=placement.name;
-    light.position.set(...placement.position);
-    light.castShadow=false;
-    scene.add(light);
-  }
-}
-
 function addSecondFloorFurniture(){
   const walnut=mat(0x4a2d1b,.82),dark=mat(0x2c1c13,.85),brass=mat(0x96713a,.42,.52);
   [-3.55,-.05,3.48].forEach((x,i)=>{
