@@ -540,8 +540,12 @@ function createOriginalBaroqueBuffer(context){
     addVoice(bar.chord[2]+12,origin+2.02,.70,.015,'cravo');
     if(barIndex%2===1)addVoice(bar.root+12,origin+3.02,.85,.012,'alaude');
   });
-  const fade=Math.floor(sampleRate*.32),head=samples.slice(0,fade),tail=samples.slice(total-fade);
-  for(let i=0;i<fade;i++){const t=i/(fade-1),blend=tail[i]*(1-t)+head[i]*t;samples[i]=blend;samples[total-fade+i]=blend;}
+  // Fade circular nas extremidades: o buffer começa e termina em silêncio, sem clique.
+  const fade=Math.floor(sampleRate*.38);
+  for(let i=0;i<fade;i++){
+    const t=i/(fade-1),inGain=Math.sin(t*Math.PI*.5),outGain=Math.cos(t*Math.PI*.5);
+    samples[i]*=inGain;samples[total-fade+i]*=outGain;
+  }
   let peak=0;for(let i=0;i<total;i++)peak=Math.max(peak,Math.abs(samples[i]));
   const scale=peak>.22?.22/peak:1,buffer=context.createBuffer(1,total,sampleRate),channel=buffer.getChannelData(0);
   for(let i=0;i<total;i++)channel[i]=samples[i]*scale;
@@ -942,8 +946,8 @@ function addSecondFloorFurniture(){
       wick.position.set(cx,1.054,-.035);root.add(wick);
       root.updateMatrixWorld(true);
       const flamePos=root.localToWorld(new THREE.Vector3(cx,1.09,-.035));
-      if(cx<0)addCandleLightAt(flamePos,.42,1.65,i*.8+.3);
-      createSmokeEmitter(flamePos);
+      if(cx<0&&i<2)addCandleLightAt(flamePos,.58,2.25,i*.8+.3);
+      if(cx<0)createSmokeEmitter(flamePos);
     }
     if(i===1){const stand=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.18,12),brass);stand.position.set(.40,.90,.05);root.add(stand);sphere(root,'Pequena esfera de latão',[.40,1.01,.05],[.07,.07,.07],brass);}
     upperBlocks.push({x0:x-w/2-.12,x1:x+w/2+.12,z0:3.30,z1:4.02});
@@ -1515,7 +1519,7 @@ enterVRButton.addEventListener('click',async()=>{
     console.warn('Tentativa com local-floor falhou; testando referência local.',firstError);
     try{if(session&&session.end)await session.end();renderer.xr.setReferenceSpaceType('local');session=await navigator.xr.requestSession('immersive-vr');xrUsesFloorSpace=false;await renderer.xr.setSession(session)}catch(secondError){console.error(secondError);statusEl.textContent='Não foi possível iniciar o VR: '+(secondError.message||secondError);enterVRButton.disabled=false;return}
   }
-  xrSession=session;statusEl.textContent='VR ativo. Analógico esquerdo anda; direito gira em passos de 30°.';
+  xrSession=session;statusEl.textContent='VR ativo. Analógico esquerdo anda; direito gira em passos de 30°. Mire no pequeno painel à direita para controlar a música.';
   session.addEventListener('end',()=>{xrSession=null;isSitting=false;seatedSnapshot=null;sitChairButton.textContent='Sentar na cadeira';viewOffset.position.set(0,0,0);viewOffset.rotation.set(0,0,0);camera.position.set(0,1.78,0);camera.rotation.set(0,0,0);rig.position.y=0;activeFloorY=0;onStairs=false;enterVRButton.disabled=false;enterVRButton.textContent='Entrar em VR';statusEl.textContent='Sessão VR encerrada. Você pode entrar novamente.';closeDialogue()},{once:true});
   enterVRButton.textContent='VR ativo';
 });
