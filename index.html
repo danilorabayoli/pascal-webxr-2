@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Quarto de Blaise Pascal — WebXR</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090b10;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#f4ead7}canvas{display:block;width:100%;height:100%;touch-action:none}#panel{position:fixed;left:16px;top:14px;z-index:5;width:min(420px,calc(100vw - 32px));padding:15px 16px;border:1px solid #76552b;border-radius:12px;background:rgba(12,12,15,.88);box-shadow:0 7px 30px #0008;backdrop-filter:blur(8px)}h1{font-size:18px;line-height:1.15;margin:0 0 8px;color:#f2d5a0}#status{font-size:13px;line-height:1.4;color:#d8ccb7;margin:0 0 10px}#controls{font-size:12px;line-height:1.5;color:#c4b59d;margin:8px 0 12px}button{font:600 14px system-ui;cursor:pointer;border:1px solid #9c713a;border-radius:9px;background:#8a5a23;color:white;padding:10px 14px}button:hover{background:#a46e2f}button:disabled{opacity:.5;cursor:default}.secondary{background:#252329;border-color:#6b5c4a}#buttons{display:flex;gap:8px;flex-wrap:wrap}#crosshair{position:fixed;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%);pointer-events:none;z-index:3;border:1px solid #f2d5a0;border-radius:50%;box-shadow:0 0 4px #000}#crosshair:after{content:'';position:absolute;left:50%;top:50%;width:3px;height:3px;transform:translate(-50%,-50%);border-radius:50%;background:#f2d5a0}#desktopDialog{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);width:min(620px,calc(100vw - 30px));background:rgba(15,13,12,.94);border:1px solid #9c713a;border-radius:14px;padding:18px 20px;z-index:8;box-shadow:0 10px 35px #000a}#desktopDialog.hidden{display:none}#dialogTitle{font-size:16px;color:#f2d5a0;font-weight:700;margin-bottom:7px}#dialogBody{font-size:14px;line-height:1.6;white-space:pre-line;margin-bottom:14px}#dialogButtons{display:flex;justify-content:flex-end;gap:10px}#loading{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#090b10;color:#f2d5a0;font-size:16px}#loading.hidden{display:none}#error{color:#ffb1a8}#badge{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#ba9862;margin-bottom:5px} @media(max-width:560px){#panel{left:8px;top:8px;width:calc(100vw - 16px);padding:12px}h1{font-size:16px}#controls{font-size:11px}}
+:root{color-scheme:dark}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090b10;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#f4ead7}canvas{display:block;width:100%;height:100%;touch-action:none}#panel{position:fixed;left:16px;top:14px;z-index:5;width:min(420px,calc(100vw - 32px));padding:15px 16px;border:1px solid #76552b;border-radius:12px;background:rgba(12,12,15,.88);box-shadow:0 7px 30px #0008;backdrop-filter:blur(8px)}h1{font-size:18px;line-height:1.15;margin:0 0 8px;color:#f2d5a0}#status{font-size:13px;line-height:1.4;color:#d8ccb7;margin:0 0 10px}#controls{font-size:12px;line-height:1.5;color:#c4b59d;margin:8px 0 12px}button{font:600 14px system-ui;cursor:pointer;border:1px solid #9c713a;border-radius:9px;background:#8a5a23;color:white;padding:10px 14px}button:hover{background:#a46e2f}button:disabled{opacity:.5;cursor:default}.secondary{background:#252329;border-color:#6b5c4a}#buttons{display:flex;gap:8px;flex-wrap:wrap}#crosshair{position:fixed;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%);pointer-events:none;z-index:3;border:1px solid #f2d5a0;border-radius:50%;box-shadow:0 0 4px #000}#crosshair:after{content:'';position:absolute;left:50%;top:50%;width:3px;height:3px;transform:translate(-50%,-50%);border-radius:50%;background:#f2d5a0}#desktopDialog{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);width:min(620px,calc(100vw - 30px));background:rgba(15,13,12,.94);border:1px solid #9c713a;border-radius:14px;padding:18px 20px;z-index:8;box-shadow:0 10px 35px #000a}#desktopDialog.hidden{display:none}#dialogTitle{font-size:16px;color:#f2d5a0;font-weight:700;margin-bottom:7px}#dialogBody{font-size:14px;line-height:1.6;white-space:pre-line;margin-bottom:14px}#dialogButtons{display:flex;justify-content:flex-end;gap:10px}#loading{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#090b10;color:#f2d5a0;font-size:16px}#loading.hidden{display:none}#error{color:#ffb1a8}#badge{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#ba9862;margin-bottom:5px}#musicControls{display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:9px;border-top:1px solid #59432d;font-size:12px;color:#d7c4a4}#musicControls label{display:flex;align-items:center;gap:7px;flex:1}#musicVolume{width:100%;min-width:70px;accent-color:#c58e48}#musicToggle{padding:7px 10px;font-size:12px;white-space:nowrap} @media(max-width:560px){#panel{left:8px;top:8px;width:calc(100vw - 16px);padding:12px}h1{font-size:16px}#controls{font-size:11px}}
 </style>
   <meta name="pascal-restore-revision" content="b83b87958e3d68941bac675a142886e103f612e2">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -21,6 +21,7 @@
   <p id="status">Preparando o modelo 3D original…</p>
   <div id="controls"><b>PC:</b> clique na cena para capturar o mouse; WASD anda, mouse olha, Esc libera.<br><b>Meta Quest:</b> analógico esquerdo anda, direito gira em passos de 30°; mire pelo ponto dourado e aperte o gatilho direito para conversar.</div>
   <div id="buttons"><button id="enterVR" disabled>Entrar em VR</button><button id="sitChair" class="secondary" disabled>Sentar na cadeira</button><button id="resetView" class="secondary">Reiniciar posição</button></div>
+  <div id="musicControls"><button id="musicToggle" class="secondary" type="button">Silenciar música</button><label for="musicVolume">Volume <input id="musicVolume" type="range" min="0" max="100" value="40" step="1"></label></div>
 </div>
 <div id="crosshair"></div>
 <div id="desktopDialog" class="hidden">
@@ -44,16 +45,19 @@ const dialogBodyEl=document.querySelector('#dialogBody');
 const dialogNextButton=document.querySelector('#dialogNext');
 const dialogCancelButton=document.querySelector('#dialogCancel');
 const crosshair=document.querySelector('#crosshair');
+const musicToggleButton=document.querySelector('#musicToggle');
+const musicVolumeInput=document.querySelector('#musicVolume');
 
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x14131a);
-scene.fog=new THREE.Fog(0x14131a,18,34);
+scene.background=new THREE.Color(0x24180f);
+scene.fog=new THREE.Fog(0x24180f,20,38);
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.0));
 renderer.setSize(window.innerWidth,window.innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=0.96;
+renderer.toneMappingExposure=1.08;
+renderer.shadowMap.enabled=false;
 renderer.xr.enabled=true;
 if(typeof renderer.xr.setFoveation==='function')renderer.xr.setFoveation(0.8);
 document.body.appendChild(renderer.domElement);
@@ -70,14 +74,9 @@ camera.position.set(0,1.78,0);
 camera.rotation.order='YXZ';
 viewOffset.add(camera);
 
-// Fim de tarde: pouca luz ambiente e luz solar quente muito suave.
-scene.add(new THREE.HemisphereLight(0x8994ac,0x24160c,0.31));
-const duskLight=new THREE.DirectionalLight(0xffb781,0.22);
-duskLight.position.set(-4,3,-4);
-scene.add(duskLight);
-const fillLight=new THREE.DirectionalLight(0x78839c,0.065);
-fillLight.position.set(4,4,-4);
-scene.add(fillLight);
+// Rebatimento ambiente quente e discreto; a luz principal vem das velas.
+const candleBounce=new THREE.HemisphereLight(0xffd2a0,0x24140b,0.24);
+candleBounce.name='Rebatimento quente das velas';scene.add(candleBounce);
 
 // As luzes são posicionadas diretamente nas chamas reais do modelo GLB.
 const candleLights=[];
@@ -138,8 +137,8 @@ function attachCandleLighting(roomRoot){
     registerAnimatedFlame(flame,index*1.81+.37);
     const position=flame.getWorldPosition(new THREE.Vector3());
     position.y+=0.10;
-    if(index<2)addCandleLightAt(position,index===0?3.3:3.0,4.6,index*1.87+0.35);
-    if(index<10){const smokePosition=position.clone();smokePosition.y+=.06;createSmokeEmitter(smokePosition);}
+    if(index<2)addCandleLightAt(position,index===0?2.05:1.85,4.2,index*1.87+0.35);
+    if(index<6){const smokePosition=position.clone();smokePosition.y+=.06;createSmokeEmitter(smokePosition);}
     // Reforça apenas a emissão da malha que já é a chama da vela no modelo.
     flame.traverse(part=>{
       if(!part.isMesh||!part.material)return;
@@ -275,6 +274,7 @@ function addPascalDeskCandleFlames(roomRoot){
     flame.position.set(x,top+.004,z);
     scene.add(flame);
     registerAnimatedFlame(flame,phase);
+    if(added<2)addCandleLightAt(new THREE.Vector3(x,top+flameHeight*.62,z),.92,3.5,phase+.2);
 
     const coreHeight=flameHeight*.66;
     const coreWidth=flameWidth*.43;
@@ -368,7 +368,7 @@ function addWallEndCandles(){
 
         root.updateMatrixWorld(true);
         const flameWorld=root.localToWorld(new THREE.Vector3(0,.20,0));
-        if(end===0&&candleIndex%4===0)addCandleLightAt(flameWorld,0.78,2.8,candleIndex*1.41+.4);
+        if(end===0&&candleIndex%4===0)addCandleLightAt(flameWorld,1.02,3.35,candleIndex*1.41+.4);
         candleIndex++;
       }
     }
@@ -437,7 +437,7 @@ function addCeilingChandeliers(){
     // A fonte central fornece luz prática que realmente ilumina o ambiente.
     root.updateMatrixWorld(true);
     const centerLight=root.localToWorld(new THREE.Vector3(0,-.55,0));
-    addCandleLightAt(centerLight,5.0,7.6,fixture.phase);
+    addCandleLightAt(centerLight,2.75,6.3,fixture.phase);
   }
 }
 
@@ -452,7 +452,7 @@ smokeCtx.fillStyle=smokeGrad;smokeCtx.fillRect(0,0,64,64);
 const smokeMap=new THREE.CanvasTexture(smokeCanvas);
 function createSmokeEmitter(position){
   const emitter={position:position.clone(),particles:[]};
-  for(let i=0;i<3;i++){
+  for(let i=0;i<2;i++){
     const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:smokeMap,transparent:true,opacity:0,depthWrite:false,blending:THREE.NormalBlending}));
     sprite.position.copy(position);sprite.scale.set(.085,.12,1);scene.add(sprite);
     emitter.particles.push({sprite,age:Math.random()*2.8,life:4.0+(i%2)*.5});
@@ -503,6 +503,105 @@ let xrSession=null;
 let snapTurnCooldown=0;
 const keyState=new Set();
 const interactables=[];
+
+let ambientMusicSource=null,ambientMusicGain=null,ambientMusicEnabled=true,ambientMusicVolume=.18;
+let musicVRControls=null,musicVRToggleTarget=null,musicVRDownTarget=null,musicVRUpTarget=null;
+function midiFrequency(note){return 440*Math.pow(2,(note-69)/12)}
+function createOriginalBaroqueBuffer(context){
+  // Composição procedural original de timbres suaves de alaúde, cravo e viola da gamba.
+  const sampleRate=22050,duration=32,total=sampleRate*duration,samples=new Float32Array(total);
+  function addVoice(note,start,seconds,amplitude,kind){
+    const frequency=midiFrequency(note),first=Math.max(0,Math.floor(start*sampleRate));
+    const last=Math.min(total,Math.floor((start+seconds)*sampleRate));
+    const partials=kind==='viola'?[1,.30,.13,.055]:kind==='cravo'?[1,.42,.22,.12,.065]:[1,.48,.23,.115,.055];
+    for(let index=first;index<last;index++){
+      const t=(index-first)/sampleRate;let envelope=0,modulatedFrequency=frequency;
+      if(kind==='viola'){
+        envelope=Math.min(1,t/.34)*Math.max(0,Math.min(1,(seconds-t)/.42));
+        modulatedFrequency*=1+.0025*Math.sin(2*Math.PI*4.7*t);
+      }else envelope=(1-Math.exp(-t*95))*Math.exp(-t*(kind==='cravo'?7.2:3.9));
+      const phase=2*Math.PI*modulatedFrequency*t;let wave=0;
+      for(let h=0;h<partials.length;h++)wave+=partials[h]*Math.sin(phase*(h+1)+(h===2?.012:0));
+      samples[index]+=amplitude*envelope*wave;
+    }
+  }
+  const bars=[
+    {root:38,chord:[50,57,62,65]},{root:43,chord:[55,62,67,70]},
+    {root:45,chord:[57,64,67,73]},{root:38,chord:[50,57,62,65]},
+    {root:41,chord:[53,60,65,69]},{root:36,chord:[48,55,60,64]},
+    {root:43,chord:[55,62,67,70]},{root:45,chord:[57,64,67,73]}
+  ];
+  const pattern=[0,2,1,3,2,1,2,1];
+  bars.forEach((bar,barIndex)=>{
+    const origin=barIndex*4;
+    addVoice(bar.root,origin,3.86,.014,'viola');addVoice(bar.root+7,origin+.08,3.72,.009,'viola');
+    for(let step=0;step<8;step++)addVoice(bar.chord[pattern[step]],origin+step*.5,1.34,.040,'alaude');
+    addVoice(bar.chord[0]+12,origin+.04,.74,.018,'cravo');
+    addVoice(bar.chord[2]+12,origin+2.02,.70,.015,'cravo');
+    if(barIndex%2===1)addVoice(bar.root+12,origin+3.02,.85,.012,'alaude');
+  });
+  const fade=Math.floor(sampleRate*.32),head=samples.slice(0,fade),tail=samples.slice(total-fade);
+  for(let i=0;i<fade;i++){const t=i/(fade-1),blend=tail[i]*(1-t)+head[i]*t;samples[i]=blend;samples[total-fade+i]=blend;}
+  let peak=0;for(let i=0;i<total;i++)peak=Math.max(peak,Math.abs(samples[i]));
+  const scale=peak>.22?.22/peak:1,buffer=context.createBuffer(1,total,sampleRate),channel=buffer.getChannelData(0);
+  for(let i=0;i<total;i++)channel[i]=samples[i]*scale;
+  return buffer;
+}
+function startAmbientMusic(){
+  if(!soundEngine||ambientMusicSource)return;
+  try{
+    const source=soundEngine.createBufferSource();source.buffer=createOriginalBaroqueBuffer(soundEngine);source.loop=true;
+    const filter=soundEngine.createBiquadFilter();filter.type='lowpass';filter.frequency.value=4200;filter.Q.value=.45;
+    ambientMusicGain=soundEngine.createGain();ambientMusicGain.gain.setValueAtTime(.0001,soundEngine.currentTime);
+    source.connect(filter);filter.connect(ambientMusicGain);ambientMusicGain.connect(soundEngine.destination);source.start();
+    ambientMusicGain.gain.setTargetAtTime(ambientMusicEnabled?ambientMusicVolume:0,soundEngine.currentTime,.8);
+    ambientMusicSource=source;
+  }catch(error){console.warn('A música ambiente não pôde ser iniciada:',error)}
+}
+function drawMusicTargetLabel(target,label){
+  const canvas=target.userData.labelCanvas,ctx=canvas&&canvas.getContext('2d');if(!ctx)return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#f5dfb7';
+  ctx.font='bold 42px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(label,canvas.width/2,canvas.height/2);target.userData.labelTexture.needsUpdate=true;
+}
+function syncMusicControls(){
+  if(musicToggleButton)musicToggleButton.textContent=ambientMusicEnabled?'Silenciar música':'Ativar música';
+  if(musicVolumeInput)musicVolumeInput.value=String(Math.round(ambientMusicVolume/.45*100));
+  if(musicVRToggleTarget)drawMusicTargetLabel(musicVRToggleTarget,ambientMusicEnabled?'SOM ON':'SOM OFF');
+}
+function setAmbientMusicVolume(value){
+  ambientMusicVolume=THREE.MathUtils.clamp(Number(value)||0,0,.45);
+  if(ambientMusicGain&&soundEngine)ambientMusicGain.gain.setTargetAtTime(ambientMusicEnabled?ambientMusicVolume:0,soundEngine.currentTime,.12);
+  syncMusicControls();
+}
+function toggleAmbientMusic(){
+  if(!soundEngine)enableSounds();ambientMusicEnabled=!ambientMusicEnabled;
+  if(ambientMusicGain&&soundEngine)ambientMusicGain.gain.setTargetAtTime(ambientMusicEnabled?ambientMusicVolume:0,soundEngine.currentTime,.16);
+  syncMusicControls();
+}
+function changeAmbientMusicVolume(amount){setAmbientMusicVolume(ambientMusicVolume+amount)}
+function makeMusicVRButton(label,action,x,width){
+  const target=new THREE.Mesh(new THREE.BoxGeometry(width,.105,.022),new THREE.MeshBasicMaterial({color:0x68451f}));
+  target.name='Controle de áudio VR — '+label;target.position.set(x,0,0);target.userData.interaction=action;
+  const canvas=document.createElement('canvas');canvas.width=256;canvas.height=128;
+  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(width-.012,.078),new THREE.MeshBasicMaterial({map:texture,transparent:true,side:THREE.DoubleSide}));
+  face.position.z=-.012;target.add(face);target.userData.labelCanvas=canvas;target.userData.labelTexture=texture;
+  drawMusicTargetLabel(target,label);musicVRControls.add(target);interactables.push(target);return target;
+}
+function createVRMusicControls(){
+  if(musicVRControls)return;
+  musicVRControls=new THREE.Group();musicVRControls.name='Painel discreto de música ambiente para VR';
+  musicVRControls.position.set(.48,-.47,-1.25);musicVRControls.visible=false;camera.add(musicVRControls);
+  const backing=new THREE.Mesh(new THREE.BoxGeometry(.43,.15,.025),new THREE.MeshBasicMaterial({color:0x24170e,transparent:true,opacity:.88}));
+  musicVRControls.add(backing);
+  musicVRToggleTarget=makeMusicVRButton('SOM ON','music-toggle',-.115,.17);
+  musicVRDownTarget=makeMusicVRButton('−','music-down',.025,.085);
+  musicVRUpTarget=makeMusicVRButton('+','music-up',.135,.085);
+  syncMusicControls();
+}
+createVRMusicControls();
+
 let soundEngine=null,stepMeter=0,fireCrackleStarted=false;
 function enableSounds(){
   if(!soundEngine){
@@ -514,12 +613,13 @@ function enableSounds(){
       for(let i=0;i<channel.length;i++)channel[i]=(Math.random()*2-1)*.4;
       const fire=soundEngine.createBufferSource();fire.buffer=noiseBuffer;fire.loop=true;
       const filter=soundEngine.createBiquadFilter();filter.type='bandpass';filter.frequency.value=1250;filter.Q.value=.8;
-      const level=soundEngine.createGain();level.gain.value=.018;
+      const level=soundEngine.createGain();level.gain.value=.012;
       fire.connect(filter);filter.connect(level);level.connect(soundEngine.destination);fire.start();
     }
   }
   if(soundEngine&&soundEngine.state==='suspended')soundEngine.resume();
   if(soundEngine&&!fireCrackleStarted){fireCrackleStarted=true;scheduleFireCrackle();}
+  startAmbientMusic();
 }
 function scheduleFireCrackle(){
   if(!soundEngine||soundEngine.state==='closed')return;
@@ -533,7 +633,7 @@ function scheduleFireCrackle(){
     for(let i=0;i<length;i++){const fade=1-i/length;data[i]=(Math.random()*2-1)*fade*fade;}
     const pop=soundEngine.createBufferSource();pop.buffer=buffer;
     const high=soundEngine.createBiquadFilter();high.type='bandpass';high.frequency.value=1900+Math.random()*1300;high.Q.value=.7;
-    const envelope=soundEngine.createGain();envelope.gain.setValueAtTime(.0001,t);envelope.gain.exponentialRampToValueAtTime(.10+Math.random()*.08,t+.004);envelope.gain.exponentialRampToValueAtTime(.0001,t+.075);
+    const envelope=soundEngine.createGain();envelope.gain.setValueAtTime(.0001,t);envelope.gain.exponentialRampToValueAtTime(.055+Math.random()*.035,t+.004);envelope.gain.exponentialRampToValueAtTime(.0001,t+.075);
     pop.connect(high);high.connect(envelope);envelope.connect(soundEngine.destination);pop.start(t);
     scheduleFireCrackle();
   },delay);
@@ -545,7 +645,7 @@ function makeStepSound(){
   oscillator.frequency.setValueAtTime(88,t);
   oscillator.frequency.exponentialRampToValueAtTime(40,t+.12);
   envelope.gain.setValueAtTime(.0001,t);
-  envelope.gain.exponentialRampToValueAtTime(.055,t+.01);
+  envelope.gain.exponentialRampToValueAtTime(.035,t+.01);
   envelope.gain.exponentialRampToValueAtTime(.0001,t+.14);
   oscillator.connect(envelope);envelope.connect(soundEngine.destination);
   oscillator.start(t);oscillator.stop(t+.15);
@@ -586,7 +686,7 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
 
   addSecondFloorFurniture();
   addPascalDeskCandleFlames(room);
-  addInvisibleFurnitureLighting();
+
   registerRemainingSceneFlames();
   loaded=true;
   enterVRButton.disabled=false;
@@ -1293,11 +1393,28 @@ function updateDialogue(){
 }
 function advanceDialogue(){if(dialogStage<0)return;if(dialogStage>=2){closeDialogue();return}dialogStage++;updateDialogue()}
 function closeDialogue(){dialogStage=-1;if(dialoguePanel)dialoguePanel.visible=false;dialogEl.classList.add('hidden')}
-function interactRay(origin,direction){raycaster.set(origin,direction);raycaster.far=8.5;const hits=raycaster.intersectObjects(interactables,false);if(hits.length){const action=hits[0].object.userData.interaction;if(action==='chair'){toggleChairSit();return true}openDialogue(action);return true}return false}
+function interactRay(origin,direction){
+  raycaster.set(origin,direction);raycaster.far=8.5;
+  const hits=raycaster.intersectObjects(interactables,false).filter(hit=>{
+    const action=hit.object.userData.interaction||'';return !action.startsWith('music-')||renderer.xr.isPresenting;
+  });
+  if(hits.length){
+    const action=hits[0].object.userData.interaction;
+    if(action==='chair'){toggleChairSit();return true}
+    if(action==='music-toggle'){toggleAmbientMusic();return true}
+    if(action==='music-down'){changeAmbientMusicVolume(-.05);return true}
+    if(action==='music-up'){changeAmbientMusicVolume(.05);return true}
+    openDialogue(action);return true;
+  }
+  return false;
+}
 function desktopInteract(){const dir=new THREE.Vector3();camera.getWorldDirection(dir);return interactRay(camera.getWorldPosition(new THREE.Vector3()),dir)}
 
 dialogNextButton.addEventListener('click',()=>{if(dialogStage===2)closeDialogue();else advanceDialogue()});
 dialogCancelButton.addEventListener('click',closeDialogue);
+musicToggleButton?.addEventListener('click',()=>{enableSounds();toggleAmbientMusic()});
+musicVolumeInput?.addEventListener('input',event=>{enableSounds();setAmbientMusicVolume(Number(event.target.value)/100*.45)});
+syncMusicControls();
 
 renderer.domElement.addEventListener('click',()=>{
   enableSounds();
@@ -1433,8 +1550,15 @@ function updateControllerPointers(delta){
 function animate(){const delta=Math.min(clock.getDelta(),.05);updateCandleLighting(clock.elapsedTime);updateFlameAnimations(delta,clock.elapsedTime);updatePascalFaceAnimation(delta,clock.elapsedTime);updateSmoke(delta,clock.elapsedTime);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers(delta);renderer.render(scene,camera)}
 renderer.setAnimationLoop(animate);
 window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
-renderer.xr.addEventListener('sessionstart',()=>{viewOffset.position.y=xrUsesFloorSpace?0.22:0;camera.position.set(0,xrUsesFloorSpace?0:1.62,0);camera.rotation.set(0,0,0);pitch=0;crosshair.style.opacity='0';document.exitPointerLock?.();});
-renderer.xr.addEventListener('sessionend',()=>{viewOffset.position.y=0;camera.position.set(0,1.78,0);crosshair.style.opacity=pointerLocked?'1':'.45'});
+renderer.xr.addEventListener('sessionstart',()=>{
+  viewOffset.position.y=xrUsesFloorSpace?0.22:0;camera.position.set(0,xrUsesFloorSpace?0:1.62,0);
+  camera.rotation.set(0,0,0);pitch=0;crosshair.style.opacity='0';
+  if(musicVRControls)musicVRControls.visible=true;document.exitPointerLock?.();
+});
+renderer.xr.addEventListener('sessionend',()=>{
+  viewOffset.position.y=0;camera.position.set(0,1.78,0);crosshair.style.opacity=pointerLocked?'1':'.45';
+  if(musicVRControls)musicVRControls.visible=false;
+});
 </script>
 </body>
 </html>
