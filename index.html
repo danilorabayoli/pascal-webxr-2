@@ -349,7 +349,8 @@ function registerRemainingSceneFlames(){
     const name=(obj.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     if(/chama|flame|fire|fogo|flamme|fiamma|flammen|flam/.test(name)){
       registerAnimatedFlame(obj,fallbackPhase);
-      if(obj.isMesh||obj.children.length===0)addCandleGlow(obj,glowIndex++);
+      const isCoreFlame=/nucleo|core|centro luminoso/.test(name);
+      if((obj.isMesh||obj.children.length===0)&&!isCoreFlame)addCandleGlow(obj,glowIndex++);
       fallbackPhase+=1.173;
     }
   });
@@ -1436,13 +1437,12 @@ function playDialogueTextTick(){
 }
 function updateDialogueTyping(delta){
   if(dialogStage<0)return;
-  const titleDone=dialogueTitleRevealIndex>=dialogueTitle.length;
-  const bodyDone=dialogueBodyRevealIndex>=dialogueBody.length;
-  if(titleDone&&bodyDone)return;
+  if(dialogueTitleRevealIndex>=dialogueTitle.length&&dialogueBodyRevealIndex>=dialogueBody.length)return;
   dialogueTypingAccumulator+=delta;
   const charInterval=.028;
   let changed=false;
-  while(dialogueTypingAccumulator>=charInterval&&(!titleDone||dialogueBodyRevealIndex<dialogueBody.length)){
+  while(dialogueTypingAccumulator>=charInterval&&
+    (dialogueTitleRevealIndex<dialogueTitle.length||dialogueBodyRevealIndex<dialogueBody.length)){
     dialogueTypingAccumulator-=charInterval;
     let character='';
     if(dialogueTitleRevealIndex<dialogueTitle.length){
