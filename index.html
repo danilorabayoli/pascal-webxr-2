@@ -247,8 +247,7 @@ function addPascalDeskCandleFlames(roomRoot){
 
   const deskBodies=[];
   for(const obj of meshes){
-    const bounds=new THREE.Box3().setFromObject(obj);
-    const size=bounds.getSize(new THREE.Vector3());
+    const bounds=new THREE.Box3().setFromObject(obj);    const size=bounds.getSize(new THREE.Vector3());
     const center=bounds.getCenter(new THREE.Vector3());
     const name=(obj.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     // Região física do tampo da mesa histórica, não a área dos móveis do segundo andar.
@@ -497,8 +496,7 @@ const smokeCtx=smokeCanvas.getContext('2d');
 const smokeGrad=smokeCtx.createRadialGradient(32,32,2,32,32,30);
 smokeGrad.addColorStop(0,'rgba(225,222,214,.38)');
 smokeGrad.addColorStop(.5,'rgba(205,201,192,.17)');
-smokeGrad.addColorStop(1,'rgba(170,165,158,0)');
-smokeCtx.fillStyle=smokeGrad;smokeCtx.fillRect(0,0,64,64);
+smokeGrad.addColorStop(1,'rgba(170,165,158,0)');smokeCtx.fillStyle=smokeGrad;smokeCtx.fillRect(0,0,64,64);
 const smokeMap=new THREE.CanvasTexture(smokeCanvas);
 function createSmokeEmitter(position){
   const emitter={position:position.clone(),particles:[]};
@@ -740,6 +738,7 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   });
   scene.add(room);
   room.updateMatrixWorld(true);
+  addGoldenMathExperimentLighting(room);
   attachCandleLighting(room);
   addWallEndCandles();
   addCeilingChandeliers();
@@ -747,8 +746,7 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   addPanorama();
   createHistoricWindows(room);
   addPascalinaUpgrade(room);
-  addPascalCharacter();
-  addInteractionTargets();
+  addPascalCharacter();  addInteractionTargets();
 
 
   addSecondFloorFurniture();
@@ -997,8 +995,7 @@ function addSecondFloorFurniture(){
       if(cx<0)createSmokeEmitter(flamePos);
     }
     if(i===1){const stand=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.18,12),brass);stand.position.set(.40,.90,.05);root.add(stand);sphere(root,'Pequena esfera de latão',[.40,1.01,.05],[.07,.07,.07],brass);}
-    upperBlocks.push({x0:x-w/2-.12,x1:x+w/2+.12,z0:3.30,z1:4.02});
-  });
+    upperBlocks.push({x0:x-w/2-.12,x1:x+w/2+.12,z0:3.30,z1:4.02});  });
 }
 
 function mat(color,roughness=.82,metalness=0){return new THREE.MeshStandardMaterial({color,roughness,metalness})}
@@ -1247,8 +1244,7 @@ function addPascalCharacter(){
   headPivot.userData.brows=headPivot.children.filter(o=>(o.name||'').startsWith('Sobrancelha ')).map(o=>({object:o,rotationZ:o.rotation.z}));
   headPivot.userData.mouth=headPivot.getObjectByName('Boca');
   if(headPivot.userData.mouth)headPivot.userData.mouth.userData.baseScale=headPivot.userData.mouth.scale.clone();
-  p.userData.headPivot=headPivot;
-  p.userData.interaction='pascal';
+  p.userData.headPivot=headPivot;  p.userData.interaction='pascal';
 }
 
 function updatePascalFaceAnimation(delta,time){
@@ -1597,8 +1593,7 @@ function updateXRMovement(delta){
   const {left,right}=getXRSources();
   const move=readStick(left);
   getActiveViewDirection(tempForward);
-  tempRight.crossVectors(tempForward,up).normalize();
-  tempMove.set(0,0,0).addScaledVector(tempRight,move.x).addScaledVector(tempForward,-move.y);
+  tempRight.crossVectors(tempForward,up).normalize();  tempMove.set(0,0,0).addScaledVector(tempRight,move.x).addScaledVector(tempForward,-move.y);
   if(tempMove.lengthSq()>1)tempMove.normalize();
   const px=rig.position.x,pz=rig.position.z;
   moveRig(tempMove.x*1.65*delta,tempMove.z*1.65*delta);
