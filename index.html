@@ -826,10 +826,15 @@ function addGoldenMathExperimentLighting(root){
   const ringBox=boundsFor('Modelo geométrico 3D - aro circular');
   const ringCenter=centerOf(ringBox);
   const ringSize=sizeOf(ringBox);
-  const circleRadius=Math.min(ringSize.x,ringSize.y)*.5;
-  const circleTube=Math.max(.012,Math.min(ringSize.x,ringSize.y)*.035);
-  addTorus('Círculo - aro tubular',ringCenter.toArray(),circleRadius-circleTube,circleTube,brightGold);
-  const radiusEnd=ringCenter.clone().add(new THREE.Vector3(circleRadius-circleTube,0,0));
+  const dims=[ringSize.x,ringSize.y,ringSize.z].sort((a,b)=>b-a);
+  const circleRadius=(dims[0]+dims[1])*.25;
+  const circleTube=Math.max(.012,Math.min(dims[0],dims[1])*.035);
+  const normalAxis=ringSize.x<=ringSize.y&&ringSize.x<=ringSize.z?'x':ringSize.y<=ringSize.z?'y':'z';
+  const normal=new THREE.Vector3(normalAxis==='x'?1:0,normalAxis==='y'?1:0,normalAxis==='z'?1:0);
+  const radialAxis=normalAxis==='x'?'y':'x';
+  addTorus('Círculo - aro tubular',ringCenter.toArray(),circleRadius-circleTube,circleTube,brightGold,normal);
+  const radial=new THREE.Vector3(radialAxis==='x'?1:0,radialAxis==='y'?1:0,radialAxis==='z'?1:0);
+  const radiusEnd=ringCenter.clone().addScaledVector(radial,circleRadius-circleTube);
   rodFromVectors('Círculo - raio radial',ringCenter,radiusEnd,Math.max(.009,circleTube*.55),brass,24);
   addSphere('Círculo - pivô central',ringCenter.toArray(),circleTube*1.7,bronze);
   addSphere('Círculo - terminal do raio',radiusEnd.toArray(),circleTube*1.15,brightGold);
@@ -872,16 +877,8 @@ function addGoldenMathExperimentLighting(root){
     if(box){const c=centerOf(box),d=sizeOf(box);addBox('Triângulo - suporte restaurado',c.toArray(),{x:Math.max(d.x,.035),y:Math.max(d.y,.035),z:Math.max(d.z,.035)},brass);}
   }
 
-  // Reposiciona somente os três rótulos do experimento para acompanharem os lados.
-  const labelOffsets={
-    'Etiqueta 3D - cateto a':[-.709,-.138,0],
-    'Etiqueta 3D - cateto b':[.878,.002,0],
-    'Etiqueta 3D - hipotenusa c':[-.758,-.040,0]
-  };
-  root.traverse(obj=>{
-    const offset=labelOffsets[obj.name];
-    if(offset)obj.position.add(new THREE.Vector3(...offset));
-  });
+  // Os rótulos originais permanecem nas posições do próprio GLB.
+  // Evita deslocamentos absolutos que variam entre versões do cenário.
 
   // Só depois da reconstrução estar pronta, ocultamos as malhas antigas.
   for(const obj of original.values())obj.visible=false;
