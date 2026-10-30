@@ -1725,7 +1725,30 @@ for(let i=0;i<2;i++){
   rig.add(controller);controllers.push(controller);
 }
 
-function readStick(source){if(!source||!source.gamepad)return {x:0,y:0};const a=source.gamepad.axes||[];let x=Number(a[0]||0),y=Number(a[1]||0);if(Math.hypot(x,y)<.04&&a.length>=4&&Math.hypot(Number(a[2]||0),Number(a[3]||0))>.12){x=Number(a[2]||0);y=Number(a[3]||0)}const m=Math.min(Math.hypot(x,y),1);if(m<.15)return {x:0,y:0};const k=(m-.15)/.85;return {x:x/m*k,y:y/m*k}}
+function readStick(source){
+  const gamepad=source&&source.gamepad;
+  if(!gamepad)return {x:0,y:0};
+  const axes=gamepad.axes||[];
+  const pair=(index)=>({
+    x:Number.isFinite(Number(axes[index]))?Number(axes[index]):0,
+    y:Number.isFinite(Number(axes[index+1]))?Number(axes[index+1]):0
+  });
+  let stick;
+  if(gamepad.mapping==='xr-standard'&&axes.length>=4){
+    // No padrão WebXR, 0/1 são do touchpad e 2/3 são do analógico.
+    stick=pair(2);
+  }else if(axes.length>=4){
+    // Em controles sem mapeamento padrão, escolhe o par que realmente está sendo usado.
+    const first=pair(0),second=pair(2);
+    stick=Math.hypot(second.x,second.y)>Math.hypot(first.x,first.y)+.035?second:first;
+  }else{
+    stick=pair(0);
+  }
+  const magnitude=Math.hypot(stick.x,stick.y);
+  if(magnitude<.16)return {x:0,y:0};
+  const strength=Math.min((magnitude-.16)/.84,1);
+  return {x:stick.x/magnitude*strength,y:stick.y/magnitude*strength};
+}
 function getXRSources(){const session=renderer.xr.getSession();if(!session)return {left:null,right:null};let left=null,right=null;for(const source of session.inputSources){if(source.handedness==='left')left=source;else if(source.handedness==='right')right=source}return {left,right}}
 function getActiveViewDirection(target){
   // Atualiza a hierarquia rig -> offset -> câmera antes de ler a pose real do headset.
