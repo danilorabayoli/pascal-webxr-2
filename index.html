@@ -506,6 +506,8 @@ const interactables=[];
 
 let ambientMusicSource=null,ambientMusicGain=null,ambientMusicEnabled=true,ambientMusicVolume=.18;
 let musicVRControls=null,musicVRToggleTarget=null,musicVRDownTarget=null,musicVRUpTarget=null;
+const musicViewerPosition=new THREE.Vector3(),musicViewerQuaternion=new THREE.Quaternion();
+const musicViewerOffset=new THREE.Vector3(.48,-.47,-1.25),musicOffsetWorld=new THREE.Vector3();
 function midiFrequency(note){return 440*Math.pow(2,(note-69)/12)}
 function createOriginalBaroqueBuffer(context){
   // Composição procedural original de timbres suaves de alaúde, cravo e viola da gamba.
@@ -596,13 +598,24 @@ function makeMusicVRButton(label,action,x,width){
 function createVRMusicControls(){
   if(musicVRControls)return;
   musicVRControls=new THREE.Group();musicVRControls.name='Painel discreto de música ambiente para VR';
-  musicVRControls.position.set(.48,-.47,-1.25);musicVRControls.visible=false;camera.add(musicVRControls);
+  musicVRControls.visible=false;scene.add(musicVRControls);
   const backing=new THREE.Mesh(new THREE.BoxGeometry(.43,.15,.025),new THREE.MeshBasicMaterial({color:0x24170e,transparent:true,opacity:.88}));
   musicVRControls.add(backing);
   musicVRToggleTarget=makeMusicVRButton('SOM ON','music-toggle',-.115,.17);
   musicVRDownTarget=makeMusicVRButton('−','music-down',.025,.085);
   musicVRUpTarget=makeMusicVRButton('+','music-up',.135,.085);
   syncMusicControls();
+}
+function updateVRMusicControlsPose(){
+  if(!renderer.xr.isPresenting||!musicVRControls||!musicVRControls.visible)return;
+  const xrCamera=renderer.xr.getCamera(camera);if(!xrCamera)return;
+  xrCamera.updateMatrixWorld(true);
+  xrCamera.getWorldPosition(musicViewerPosition);
+  xrCamera.getWorldQuaternion(musicViewerQuaternion);
+  musicOffsetWorld.copy(musicViewerOffset).applyQuaternion(musicViewerQuaternion);
+  musicVRControls.position.copy(musicViewerPosition).add(musicOffsetWorld);
+  musicVRControls.quaternion.copy(musicViewerQuaternion);
+  musicVRControls.updateMatrixWorld(true);
 }
 createVRMusicControls();
 
@@ -1551,7 +1564,13 @@ function updateControllerPointers(delta){
     if(controller.userData.reticle)controller.userData.reticle.position.set(0,0,-distance);
   }
 }
-function animate(){const delta=Math.min(clock.getDelta(),.05);updateCandleLighting(clock.elapsedTime);updateFlameAnimations(delta,clock.elapsedTime);updatePascalFaceAnimation(delta,clock.elapsedTime);updateSmoke(delta,clock.elapsedTime);updateDesktopMovement(delta);updateXRMovement(delta);updateControllerPointers(delta);renderer.render(scene,camera)}
+function animate(){
+  const delta=Math.min(clock.getDelta(),.05);
+  updateCandleLighting(clock.elapsedTime);updateFlameAnimations(delta,clock.elapsedTime);
+  updatePascalFaceAnimation(delta,clock.elapsedTime);updateSmoke(delta,clock.elapsedTime);
+  updateDesktopMovement(delta);updateXRMovement(delta);updateVRMusicControlsPose();
+  updateControllerPointers(delta);renderer.render(scene,camera);
+}
 renderer.setAnimationLoop(animate);
 window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)});
 renderer.xr.addEventListener('sessionstart',()=>{
