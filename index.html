@@ -725,41 +725,25 @@ const tempRight=new THREE.Vector3();
 const tempMove=new THREE.Vector3();
 const playerRadius=0.30;
 
-function addGoldenMathExperimentLighting(roomRoot){
-  // Realce isolado da galeria do segundo andar: círculo e triângulo retângulo.
-  // Materiais clonados para não alterar materiais compartilhados pelo Triângulo de Pascal.
-  const circlePattern=/^(Modelo geométrico 3D - (aro circular|raio do círculo)|Etiqueta 3D - raio)$/i;
-  const trianglePattern=/^(Modelo geométrico 3D - (cateto a|cateto b|hipotenusa c)|Etiqueta 3D - (cateto a|cateto b|hipotenusa c))$/i;
-  const circleBounds=new THREE.Box3(),triangleBounds=new THREE.Box3();
-  let circleCount=0,triangleCount=0;
-  roomRoot.updateMatrixWorld(true);
-  roomRoot.traverse(obj=>{
-    if(!obj.isMesh||!obj.material)return;
-    const name=(obj.name||'').trim();
-    const isCircle=circlePattern.test(name),isTriangle=trianglePattern.test(name);
-    if(!isCircle&&!isTriangle)return;
-    const source=Array.isArray(obj.material)?obj.material:[obj.material];
-    const cloned=source.map(material=>{
-      const copy=material.clone();
-      if(copy.emissive){copy.emissive.set(0x9a5b20);copy.emissiveIntensity=.38;}
-      if(copy.color)copy.color.lerp(new THREE.Color(0xd5a45f),.12);
-      return copy;
-    });
-    obj.material=Array.isArray(obj.material)?cloned:cloned[0];
-    const bounds=new THREE.Box3().setFromObject(obj);
-    if(isCircle){circleBounds.union(bounds);circleCount++;}
-    if(isTriangle){triangleBounds.union(bounds);triangleCount++;}
-  });
-  // Luzes locais discretas, sem pós-processamento pesado para o Quest 3.
-  const addWarmLight=(bounds,name)=>{
-    if(bounds.isEmpty())return;
-    const center=bounds.getCenter(new THREE.Vector3());
-    const light=new THREE.PointLight(0xffbd70,.42,1.85,2);
-    light.name=name;light.position.set(center.x,center.y+.24,center.z);scene.add(light);
-  };
-  addWarmLight(circleBounds,'Luz dourada suave — experimento do círculo');
-  addWarmLight(triangleBounds,'Luz dourada suave — triângulo retângulo');
-  console.info('Luz dourada: círculo '+circleCount+', triângulo retângulo '+triangleCount+'. Triângulo de Pascal preservado.');
+function addGoldenMathExperimentLighting(root){
+  // Reforço geométrico isolado: substitui as cinco hastes/aro por peças tubulares.
+  const wanted=['Modelo geométrico 3D - aro circular','Modelo geométrico 3D - raio do círculo','Modelo geométrico 3D - cateto a','Modelo geométrico 3D - cateto b','Modelo geométrico 3D - hipotenusa c'];
+  const found=new Map();root.updateMatrixWorld(true);
+  root.traverse(o=>{if(o.isMesh&&o.geometry&&wanted.includes(o.name))found.set(o.name,o);});
+  if(wanted.some(n=>!found.has(n))){console.warn('Peças do experimento não localizadas; mantidas como estão.');return;}
+  const group=new THREE.Group();group.name='Experimentos matemáticos aprimorados';scene.add(group);
+  const metal=new THREE.MeshStandardMaterial({color:0xc18a43,metalness:.7,roughness:.27,emissive:0x482608,emissiveIntensity:.14});
+  const gold=new THREE.MeshStandardMaterial({color:0xe0b363,metalness:.66,roughness:.23});
+  const boxes=new Map();for(const n of wanted){boxes.set(n,new THREE.Box3().setFromObject(found.get(n)));found.get(n).visible=false;}
+  const addRod=(a,b,r,mat,name)=>{const d=new THREE.Vector3().subVectors(b,a),len=d.length();if(len<.001)return;const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,20),mat);m.name=name;m.position.copy(a).add(b).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());group.add(m);};
+  const addJoint=(p,r=.026)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),gold);m.position.copy(p);group.add(m);};
+  const cb=boxes.get(wanted[0]),cc=cb.getCenter(new THREE.Vector3()),cs=cb.getSize(new THREE.Vector3()),rad=Math.max(.04,Math.min(cs.x,cs.y)*.5);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(rad,.019,12,96),metal);ring.name='Aro circular tubular';ring.position.copy(cc);group.add(ring);
+  const edge=new THREE.Vector3(cc.x+rad,cc.y,cc.z);addRod(cc,edge,.012,gold,'Raio do círculo');addJoint(cc);addJoint(edge,.02);
+  for(let i=2;i<5;i++){const n=wanted[i],box=boxes.get(n),size=box.getSize(new THREE.Vector3()),p=box.getCenter(new THREE.Vector3());let axis=size.x>=size.y&&size.x>=size.z?'x':size.y>=size.z?'y':'z';const h=size[axis]*.5,a=p.clone(),b=p.clone();a[axis]-=h;b[axis]+=h;addRod(a,b,.026,i===4?metal:gold,['','', 'Cateto a','Cateto b','Hipotenusa c'][i]);addJoint(a);addJoint(b);}
+  const lightAt=(box,name)=>{const p=box.getCenter(new THREE.Vector3());const l=new THREE.PointLight(0xffbd70,.3,1.8,2);l.name=name;l.position.set(p.x,p.y+.18,p.z+.3);scene.add(l);};
+  lightAt(cb,'Luz suave do círculo');lightAt(boxes.get(wanted[2]).clone().union(boxes.get(wanted[3])).union(boxes.get(wanted[4])),'Luz suave do triângulo');
+  console.info('Círculo e triângulo aprimorados; Triângulo de Pascal preservado.');
 }
 
 // O cenário principal é carregado do GLB original enviado pelo usuário.
