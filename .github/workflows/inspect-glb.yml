@@ -44,7 +44,7 @@ jobs:
             (n.children || []).forEach(c => visit(c, entry.path, depth + 1));
           };
           (scene?.nodes || []).forEach(i => visit(i, '', 0));
-          nodes.forEach((n, i) => { if (!visited.has(i)) console.log('GLB_UNREACHABLE ' + JSON.stringify({index:i,name:n.name,mesh:n.mesh==null?null:gltf.meshes?.[n.mesh]?.name,translation:n.translation||[0,0,0],rotation:n.rotation||[0,0,0,1],scale:n.scale||[1,1,1]})); });
+          nodes.forEach((n, i) => { if (!visited.has(i)) console.log('GLB_UNREACHABLE ' + JSON.stringify({index:i,name:n.name,mesh:n.mesh==null?null:gltf.meshes?.[n.mesh]?.name,translation:n.translation||[0,0,0],rotation:n.rotation||[0,0,0,1],scale:n.scale||[1,1,1],children:n.children||[] })); });
           console.log('GLB_SUMMARY ' + JSON.stringify({
             nodes: nodes.length, meshes: gltf.meshes?.length || 0,
             materials: gltf.materials?.length || 0, scenes: gltf.scenes?.length || 0,
