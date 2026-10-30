@@ -1,0 +1,50 @@
+name: Inspect original GLB scene graph
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/inspect-glb.yml
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract scene graph metadata
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const file = 'assets/PASCAL_QUARTO_PARIS_1650.glb';
+          const b = fs.readFileSync(file);
+          const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+          if (v.getUint32(0, true) !== 0x46546c67) throw new Error('GLB magic inválido');
+          const jsonLength = v.getUint32(12, true);
+          const gltf = JSON.parse(b.toString('utf8', 20, 20 + jsonLength).trim());
+          const nodes = gltf.nodes || [];
+          const parents = new Map();
+          nodes.forEach((n, i) => (n.children || []).forEach(c => parents.set(c, i)));
+          const scene = gltf.scenes?.[gltf.scene || 0];
+          const visit = (i, path, depth) => {
+            const n = nodes[i]; if (!n) return;
+            const name = n.name || '(sem nome)';
+            const mesh = n.mesh == null ? null : gltf.meshes?.[n.mesh];
+            const primitiveInfo = mesh?.primitives?.map(p => {
+              const a = gltf.accessors?.[p.attributes?.POSITION];
+              return { mode: p.mode ?? 4, vertices: a?.count ?? null, min: a?.min ?? null, max: a?.max ?? null, material: p.material == null ? null : gltf.materials?.[p.material]?.name || p.material };
+            }) || null;
+            const entry = {
+              index: i, path: path + '/' + name, mesh: mesh?.name || null,
+              translation: n.translation || [0,0,0], rotation: n.rotation || [0,0,0,1],
+              scale: n.scale || [1,1,1], matrix: n.matrix || null,
+              children: (n.children || []).length, primitives: primitiveInfo,
+              extras: n.extras || null
+            };
+            console.log('GLB_NODE ' + JSON.stringify(entry));
+            (n.children || []).forEach(c => visit(c, entry.path, depth + 1));
+          };
+          (scene?.nodes || []).forEach(i => visit(i, '', 0));
+          console.log('GLB_SUMMARY ' + JSON.stringify({
+            nodes: nodes.length, meshes: gltf.meshes?.length || 0,
+            materials: gltf.materials?.length || 0, scenes: gltf.scenes?.length || 0,
+            asset: gltf.asset, roots: scene?.nodes || []
+          }));
+          NODE
