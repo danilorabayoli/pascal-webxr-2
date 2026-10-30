@@ -726,24 +726,129 @@ const tempMove=new THREE.Vector3();
 const playerRadius=0.30;
 
 function addGoldenMathExperimentLighting(root){
-  // Reforço geométrico isolado: substitui as cinco hastes/aro por peças tubulares.
-  const wanted=['Modelo geométrico 3D - aro circular','Modelo geométrico 3D - raio do círculo','Modelo geométrico 3D - cateto a','Modelo geométrico 3D - cateto b','Modelo geométrico 3D - hipotenusa c'];
-  const found=new Map();root.updateMatrixWorld(true);
-  root.traverse(o=>{if(o.isMesh&&o.geometry&&wanted.includes(o.name))found.set(o.name,o);});
-  if(wanted.some(n=>!found.has(n))){console.warn('Peças do experimento não localizadas; mantidas como estão.');return;}
-  const group=new THREE.Group();group.name='Experimentos matemáticos aprimorados';scene.add(group);
-  const metal=new THREE.MeshStandardMaterial({color:0xc18a43,metalness:.7,roughness:.27,emissive:0x482608,emissiveIntensity:.14});
-  const gold=new THREE.MeshStandardMaterial({color:0xe0b363,metalness:.66,roughness:.23});
-  const boxes=new Map();for(const n of wanted){boxes.set(n,new THREE.Box3().setFromObject(found.get(n)));found.get(n).visible=false;}
-  const addRod=(a,b,r,mat,name)=>{const d=new THREE.Vector3().subVectors(b,a),len=d.length();if(len<.001)return;const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,20),mat);m.name=name;m.position.copy(a).add(b).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());group.add(m);};
-  const addJoint=(p,r=.026)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),gold);m.position.copy(p);group.add(m);};
-  const cb=boxes.get(wanted[0]),cc=cb.getCenter(new THREE.Vector3()),cs=cb.getSize(new THREE.Vector3()),rad=Math.max(.04,Math.min(cs.x,cs.y)*.5);
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(rad,.019,12,96),metal);ring.name='Aro circular tubular';ring.position.copy(cc);group.add(ring);
-  const edge=new THREE.Vector3(cc.x+rad,cc.y,cc.z);addRod(cc,edge,.012,gold,'Raio do círculo');addJoint(cc);addJoint(edge,.02);
-  for(let i=2;i<5;i++){const n=wanted[i],box=boxes.get(n),size=box.getSize(new THREE.Vector3()),p=box.getCenter(new THREE.Vector3());let axis=size.x>=size.y&&size.x>=size.z?'x':size.y>=size.z?'y':'z';const h=size[axis]*.5,a=p.clone(),b=p.clone();a[axis]-=h;b[axis]+=h;addRod(a,b,.026,i===4?metal:gold,['','', 'Cateto a','Cateto b','Hipotenusa c'][i]);addJoint(a);addJoint(b);}
-  const lightAt=(box,name)=>{const p=box.getCenter(new THREE.Vector3());const l=new THREE.PointLight(0xffbd70,.3,1.8,2);l.name=name;l.position.set(p.x,p.y+.18,p.z+.3);scene.add(l);};
-  lightAt(cb,'Luz suave do círculo');lightAt(boxes.get(wanted[2]).clone().union(boxes.get(wanted[3])).union(boxes.get(wanted[4])),'Luz suave do triângulo');
-  console.info('Círculo e triângulo aprimorados; Triângulo de Pascal preservado.');
+  // Reconstrói somente os dois experimentos a partir das coordenadas medidas no GLB.
+  // Os demais objetos — incluindo o Triângulo de Pascal — permanecem intocados.
+  const replaceNames=[
+    'Modelo geométrico 3D - aro circular',
+    'Modelo geométrico 3D - raio do círculo',
+    'Modelo geométrico 3D - suporte vertical do círculo',
+    'Modelo geométrico 3D - base do círculo',
+    'Modelo geométrico 3D - cateto a',
+    'Modelo geométrico 3D - cateto b',
+    'Modelo geométrico 3D - hipotenusa c',
+    'Modelo geométrico 3D - suporte do triângulo',
+    'Modelo geométrico 3D - suporte do triângulo 2'
+  ];
+  const original=new Map();
+  root.traverse(obj=>{if(obj.isMesh&&replaceNames.includes(obj.name))original.set(obj.name,obj);});
+  if(replaceNames.some(name=>!original.has(name))){
+    console.warn('Não encontrei todas as peças originais; mantendo o experimento sem substituição.');
+    return;
+  }
+
+  const group=new THREE.Group();
+  group.name='Modelos matemáticos reconstruídos';
+  scene.add(group);
+
+  const walnut=new THREE.MeshStandardMaterial({color:0x482a19,metalness:.12,roughness:.48});
+  const brass=new THREE.MeshStandardMaterial({color:0xc48b3a,metalness:.84,roughness:.23});
+  const brightGold=new THREE.MeshStandardMaterial({color:0xe5b963,metalness:.78,roughness:.19});
+  const bronze=new THREE.MeshStandardMaterial({color:0x6c4422,metalness:.76,roughness:.31});
+  const darkMetal=new THREE.MeshStandardMaterial({color:0x282019,metalness:.68,roughness:.34});
+
+  const addMesh=(geometry,material,name,position)=>{
+    const mesh=new THREE.Mesh(geometry,material);
+    mesh.name=name;
+    if(position)mesh.position.copy(position);
+    mesh.castShadow=false;
+    mesh.receiveShadow=false;
+    group.add(mesh);
+    return mesh;
+  };
+  const addBox=(name,center,size,material)=>{
+    return addMesh(new THREE.BoxGeometry(size.x,size.y,size.z),material,name,new THREE.Vector3(...center));
+  };
+  const addSphere=(name,center,radius,material)=>{
+    return addMesh(new THREE.SphereGeometry(radius,20,14),material,name,new THREE.Vector3(...center));
+  };
+  const addRod=(name,a,b,radius,material,segments=28)=>{
+    const start=new THREE.Vector3(...a),finish=new THREE.Vector3(...b);
+    const direction=finish.clone().sub(start);
+    const length=direction.length();
+    if(length<.001)return null;
+    const mesh=addMesh(new THREE.CylinderGeometry(radius,radius,length,segments,1),material,name);
+    mesh.position.copy(start).add(finish).multiplyScalar(.5);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),direction.normalize());
+    return mesh;
+  };
+  const addTorus=(name,center,majorRadius,tubeRadius,material,normal=new THREE.Vector3(0,0,1),segments=96)=>{
+    const mesh=addMesh(new THREE.TorusGeometry(majorRadius,tubeRadius,12,segments),material,name,new THREE.Vector3(...center));
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),normal.clone().normalize());
+    return mesh;
+  };
+
+  // CÍRCULO: aro contínuo, raio radial, pivô, coluna e base de nogueira.
+  const circleCenter=[-4.104,5.760,.765];
+  const circleRadius=.455;
+  addBox('Círculo - plinto de nogueira',[-4.104,4.950,.765],{x:.84,y:.10,z:.49},walnut);
+  addBox('Círculo - filete superior de latão',[-4.104,5.004,.765],{x:.81,y:.012,z:.46},brass);
+  addBox('Círculo - tampo de nogueira',[-4.104,5.014,.765],{x:.785,y:.012,z:.435},walnut);
+  for(const x of [-4.455,-3.753]){
+    for(const z of [.575,.955]){
+      addSphere('Círculo - pino decorativo',[x,5.023,z],.018,brightGold);
+    }
+  }
+  addRod('Círculo - coluna central',[-4.104,5.020,.765],[-4.104,5.315,.765],.032,brass);
+  addRod('Círculo - encaixe inferior',[-4.104,5.018,.765],[-4.104,5.070,.765],.052,bronze);
+  addRod('Círculo - encaixe superior',[-4.104,5.275,.765],[-4.104,5.325,.765],.047,brightGold);
+  addTorus('Círculo - aro tubular',circleCenter,circleRadius,.022,brightGold);
+  addRod('Círculo - raio radial',circleCenter,[-4.104+circleRadius,5.760,.765],.013,brass,24);
+  addSphere('Círculo - pivô central',circleCenter,.039,bronze);
+  addSphere('Círculo - terminal do raio',[-4.104+circleRadius,5.760,.765],.025,brightGold);
+
+  // TRIÂNGULO: as três hastes usam exatamente os mesmos três vértices.
+  // Isso fecha os cantos e garante o ângulo reto sem depender de caixas delimitadoras.
+  const A=[-2.492,5.205,1.116];
+  const B=[-1.153,5.205,1.116];
+  const C=[-1.153,6.180,1.116];
+  addRod('Triângulo - cateto a',A,B,.032,brightGold,32);
+  addRod('Triângulo - cateto b',B,C,.032,brightGold,32);
+  addRod('Triângulo - hipotenusa c',A,C,.032,brightGold,32);
+  for(const [label,p] of [['A',A],['B',B],['C',C]]){
+    addSphere('Triângulo - junta '+label,p,.047,bronze);
+    addSphere('Triângulo - tampa da junta '+label,[p[0],p[1],p[2]+.031],.019,brightGold);
+  }
+  for(const [label,p] of [['esquerdo',A],['direito',B]]){
+    const x=p[0];
+    addRod('Triângulo - suporte '+label,[x,4.982,1.116],[x,5.205,1.116],.030,brass);
+    addRod('Triângulo - pé '+label,[x,4.975,1.116],[x,5.015,1.116],.060,bronze);
+    addRod('Triângulo - colar '+label,[x,5.155,1.116],[x,5.190,1.116],.044,brightGold);
+  }
+
+  // Reposiciona somente os três rótulos do experimento para acompanharem os lados.
+  const labelOffsets={
+    'Etiqueta 3D - cateto a':[-.709,-.138,0],
+    'Etiqueta 3D - cateto b':[.878,.002,0],
+    'Etiqueta 3D - hipotenusa c':[-.758,-.040,0]
+  };
+  root.traverse(obj=>{
+    const offset=labelOffsets[obj.name];
+    if(offset)obj.position.add(new THREE.Vector3(...offset));
+  });
+
+  // Só depois da reconstrução estar pronta, ocultamos as malhas antigas.
+  for(const name of replaceNames)original.get(name).visible=false;
+
+  // Luzes discretas e localizadas, sem sombras dinâmicas pesadas para o Quest 3.
+  const circleLight=new THREE.PointLight(0xffbd70,.34,1.8,2);
+  circleLight.name='Luz quente do círculo';
+  circleLight.position.set(-4.02,5.92,1.12);
+  scene.add(circleLight);
+  const triangleLight=new THREE.PointLight(0xffbd70,.30,1.9,2);
+  triangleLight.name='Luz quente do triângulo';
+  triangleLight.position.set(-1.72,5.90,1.46);
+  scene.add(triangleLight);
+  console.info('Círculo e triângulo retângulo reconstruídos; Triângulo de Pascal preservado.');
 }
 
 // O cenário principal é carregado do GLB original enviado pelo usuário.
