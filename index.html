@@ -799,42 +799,77 @@ function addGoldenMathExperimentLighting(root){
     return mesh;
   };
 
-  // CÍRCULO: aro contínuo, raio radial, pivô, coluna e base de nogueira.
-  const circleCenter=[-4.104,5.760,.765];
-  const circleRadius=.455;
-  addBox('Círculo - plinto de nogueira',[-4.104,4.950,.765],{x:.84,y:.10,z:.49},walnut);
-  addBox('Círculo - filete superior de latão',[-4.104,5.004,.765],{x:.81,y:.012,z:.46},brass);
-  addBox('Círculo - tampo de nogueira',[-4.104,5.014,.765],{x:.785,y:.012,z:.435},walnut);
-  for(const x of [-4.455,-3.753]){
-    for(const z of [.575,.955]){
-      addSphere('Círculo - pino decorativo',[x,5.023,z],.018,brightGold);
-    }
-  }
-  addRod('Círculo - coluna central',[-4.104,5.020,.765],[-4.104,5.315,.765],.032,brass);
-  addRod('Círculo - encaixe inferior',[-4.104,5.018,.765],[-4.104,5.070,.765],.052,bronze);
-  addRod('Círculo - encaixe superior',[-4.104,5.275,.765],[-4.104,5.325,.765],.047,brightGold);
-  addTorus('Círculo - aro tubular',circleCenter,circleRadius,.022,brightGold);
-  addRod('Círculo - raio radial',circleCenter,[-4.104+circleRadius,5.760,.765],.013,brass,24);
-  addSphere('Círculo - pivô central',circleCenter,.039,bronze);
-  addSphere('Círculo - terminal do raio',[-4.104+circleRadius,5.760,.765],.025,brightGold);
+  // Mede as peças originais em coordenadas de mundo. Não usa posições presumidas:
+  // assim os modelos novos ficam exatamente onde o GLB realmente colocou os experimentos.
+  root.updateMatrixWorld(true);
+  const boundsFor=(name)=>{
+    const obj=original.get(name);
+    if(!obj)return null;
+    const box=new THREE.Box3().setFromObject(obj);
+    return box.isEmpty()?null:box;
+  };
+  const centerOf=(box)=>box.getCenter(new THREE.Vector3());
+  const sizeOf=(box)=>box.getSize(new THREE.Vector3());
+  const endpointsOf=(box)=>{
+    const c=centerOf(box),d=sizeOf(box);
+    const axis=d.x>=d.y&&d.x>=d.z?'x':d.y>=d.z?'y':'z';
+    const a=c.clone(),b=c.clone();
+    a[axis]-=d[axis]*.5;b[axis]+=d[axis]*.5;
+    return [a,b];
+  };
+  const rodFromVectors=(name,a,b,radius,material)=>{
+    const av=a.toArray(),bv=b.toArray();
+    return addRod(name,av,bv,radius,material,32);
+  };
 
-  // TRIÂNGULO: as três hastes usam exatamente os mesmos três vértices.
-  // Isso fecha os cantos e garante o ângulo reto sem depender de caixas delimitadoras.
-  const A=[-2.492,5.205,1.116];
-  const B=[-1.153,5.205,1.116];
-  const C=[-1.153,6.180,1.116];
-  addRod('Triângulo - cateto a',A,B,.032,brightGold,32);
-  addRod('Triângulo - cateto b',B,C,.032,brightGold,32);
-  addRod('Triângulo - hipotenusa c',A,C,.032,brightGold,32);
-  for(const [label,p] of [['A',A],['B',B],['C',C]]){
-    addSphere('Triângulo - junta '+label,p,.047,bronze);
-    addSphere('Triângulo - tampa da junta '+label,[p[0],p[1],p[2]+.031],.019,brightGold);
+  // CÍRCULO: aro e raio calculados a partir dos limites reais do aro original.
+  const ringBox=boundsFor('Modelo geométrico 3D - aro circular');
+  const ringCenter=centerOf(ringBox);
+  const ringSize=sizeOf(ringBox);
+  const circleRadius=Math.min(ringSize.x,ringSize.y)*.5;
+  const circleTube=Math.max(.012,Math.min(ringSize.x,ringSize.y)*.035);
+  addTorus('Círculo - aro tubular',ringCenter.toArray(),circleRadius-circleTube,circleTube,brightGold);
+  const radiusEnd=ringCenter.clone().add(new THREE.Vector3(circleRadius-circleTube,0,0));
+  rodFromVectors('Círculo - raio radial',ringCenter,radiusEnd,Math.max(.009,circleTube*.55),brass,24);
+  addSphere('Círculo - pivô central',ringCenter.toArray(),circleTube*1.7,bronze);
+  addSphere('Círculo - terminal do raio',radiusEnd.toArray(),circleTube*1.15,brightGold);
+
+  // Recria suporte e base usando as dimensões e posições das próprias peças do GLB.
+  const supportBox=boundsFor('Modelo geométrico 3D - suporte vertical do círculo');
+  if(supportBox){
+    const c=centerOf(supportBox),d=sizeOf(supportBox);
+    addBox('Círculo - coluna de latão',c.toArray(),{x:Math.max(d.x,.035),y:Math.max(d.y,.035),z:Math.max(d.z,.035)},brass);
   }
-  for(const [label,p] of [['esquerdo',A],['direito',B]]){
-    const x=p[0];
-    addRod('Triângulo - suporte '+label,[x,4.982,1.116],[x,5.205,1.116],.030,brass);
-    addRod('Triângulo - pé '+label,[x,4.975,1.116],[x,5.015,1.116],.060,bronze);
-    addRod('Triângulo - colar '+label,[x,5.155,1.116],[x,5.190,1.116],.044,brightGold);
+  const baseBox=boundsFor('Modelo geométrico 3D - base do círculo');
+  if(baseBox){
+    const c=centerOf(baseBox),d=sizeOf(baseBox);
+    addBox('Círculo - base de nogueira',c.toArray(),{x:Math.max(d.x,.05),y:Math.max(d.y,.025),z:Math.max(d.z,.05)},walnut);
+  }
+
+  // TRIÂNGULO: recupera os extremos dos dois catetos originais e encontra o vértice comum.
+  const boxA=boundsFor('Modelo geométrico 3D - cateto a');
+  const boxB=boundsFor('Modelo geométrico 3D - cateto b');
+  const endsA=endpointsOf(boxA),endsB=endpointsOf(boxB);
+  let sharedA=0,sharedB=0,best=Infinity;
+  for(let i=0;i<2;i++)for(let j=0;j<2;j++){
+    const distance=endsA[i].distanceTo(endsB[j]);
+    if(distance<best){best=distance;sharedA=i;sharedB=j;}
+  }
+  const vertex=endsA[sharedA].clone().add(endsB[sharedB]).multiplyScalar(.5);
+  const outerA=endsA[1-sharedA];
+  const outerB=endsB[1-sharedB];
+  const rodRadius=Math.max(.018,Math.min(sizeOf(boxA).x,sizeOf(boxA).y,sizeOf(boxA).z,
+    sizeOf(boxB).x,sizeOf(boxB).y,sizeOf(boxB).z)*.45);
+  rodFromVectors('Triângulo - cateto a',outerA,vertex,rodRadius,brightGold);
+  rodFromVectors('Triângulo - cateto b',vertex,outerB,rodRadius,brightGold);
+  rodFromVectors('Triângulo - hipotenusa c',outerA,outerB,rodRadius,brightGold);
+  for(const [label,p] of [['A',outerA],['B',vertex],['C',outerB]]){
+    addSphere('Triângulo - junta '+label,p.toArray(),rodRadius*1.45,bronze);
+  }
+  // Mantém os suportes originais nas posições reais, com acabamento de latão.
+  for(const name of ['Modelo geométrico 3D - suporte do triângulo','Modelo geométrico 3D - suporte do triângulo 2']){
+    const box=boundsFor(name);
+    if(box){const c=centerOf(box),d=sizeOf(box);addBox('Triângulo - suporte restaurado',c.toArray(),{x:Math.max(d.x,.035),y:Math.max(d.y,.035),z:Math.max(d.z,.035)},brass);}
   }
 
   // Reposiciona somente os três rótulos do experimento para acompanharem os lados.
