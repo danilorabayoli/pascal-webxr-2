@@ -747,6 +747,7 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   addPanorama();
   createHistoricWindows(room);
   enhanceMathematicsExhibits(room);
+   const mathExhibitReport=enhanceMathematicsExhibits(room);
    addPascalinaUpgrade(room);
   addPascalCharacter();
   addInteractionTargets();
@@ -759,7 +760,7 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   loaded=true;
   enterVRButton.disabled=false;
   sitChairButton.disabled=false;
-  statusEl.textContent='Modelo original carregado. Mire na cadeira e aperte o gatilho para sentar; no PC, use o botão Sentar na cadeira.';
+  statusEl.textContent='Modelo original carregado. Figuras reconhecidas: círculo '+mathExhibitReport.circles+', triângulo '+mathExhibitReport.triangles+', ponto A '+mathExhibitReport.pointA+', ponto B '+mathExhibitReport.pointB+'. Mire na cadeira para sentar.';
   loadingEl.classList.add('hidden');
 },xhr=>{
   if(xhr.total){const percent=Math.round(xhr.loaded/xhr.total*100);loadingEl.textContent=`Carregando o quarto histórico… ${percent}%`;statusEl.textContent=`Carregando modelo 3D: ${percent}%`;}
@@ -1077,6 +1078,8 @@ function trianglePoints(meshes,p){
   return hull2D(pts);
 }
 function chooseRightCorners(h){
+  // Limita a busca para manter baixo custo em malhas com muitos vértices.
+  if(h.length>36){const step=h.length/36;h=Array.from({length:36},(_,i)=>h[Math.floor(i*step)])}
   let best=null,score=Infinity,areaBest=0;
   for(let i=0;i<h.length;i++)for(let j=0;j<h.length;j++)for(let k=j+1;k<h.length;k++){
     if(i===j||i===k)continue;const a=[h[j][0]-h[i][0],h[j][1]-h[i][1]],b=[h[k][0]-h[i][0],h[k][1]-h[i][1]];
@@ -1136,9 +1139,11 @@ function enhanceMathematicsExhibits(room){
   triangle.forEach((o,i)=>{if(addRightTriangleExhibit(o,i))t++});
   pointA.forEach(o=>{if(addPressurePoint(o,'A',0xc99a51))a++});
   pointB.forEach(o=>{if(addPressurePoint(o,'B',0x9c7552))b++});
-  console.info('Exposição matemática:',{circulos:c,triangulosRetangulos:t,pontosA:a,pontosB:b,
+  const report={circles:c,triangles:t,pointA:a,pointB:b};
+  console.info('Exposição matemática:',{...report,
     nomes:{circulo:circle.map(o=>o.name),triangulo:triangle.map(o=>o.name),A:pointA.map(o=>o.name),B:pointB.map(o=>o.name)}});
   if(!c&&!t&&!a&&!b)console.warn('Nenhuma figura nomeada foi encontrada no GLB; não foram usadas coordenadas presumidas.');
+  return report;
 }
 
 function makePascalinaDialTexture(){
