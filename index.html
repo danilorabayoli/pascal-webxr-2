@@ -81,6 +81,52 @@ candleBounce.name='Rebatimento quente das velas';scene.add(candleBounce);
 // As luzes são posicionadas diretamente nas chamas reais do modelo GLB.
 const candleLights=[];
 const flameAnimations=[];
+
+const candleGlowSprites=[];
+let candleGlowTexture=null,candleGlowMaterial=null,candleGlowUpdateAccumulator=0;
+function getCandleGlowMaterial(){
+  if(candleGlowMaterial)return candleGlowMaterial;
+  const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;
+  const ctx=canvas.getContext('2d');
+  const gradient=ctx.createRadialGradient(64,64,2,64,64,63);
+  gradient.addColorStop(0,'rgba(255,238,190,.46)');
+  gradient.addColorStop(.22,'rgba(255,194,111,.30)');
+  gradient.addColorStop(.52,'rgba(255,145,64,.105)');
+  gradient.addColorStop(1,'rgba(255,120,35,0)');
+  ctx.fillStyle=gradient;ctx.fillRect(0,0,128,128);
+  candleGlowTexture=new THREE.CanvasTexture(canvas);
+  candleGlowTexture.colorSpace=THREE.SRGBColorSpace;
+  candleGlowMaterial=new THREE.SpriteMaterial({
+    map:candleGlowTexture,color:0xffd09a,transparent:true,opacity:.62,
+    blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true,toneMapped:false
+  });
+  return candleGlowMaterial;
+}
+function addCandleGlow(flame,index){
+  if(!flame||flame.userData.candleGlowAdded||!flame.visible)return;
+  flame.userData.candleGlowAdded=true;
+  const glow=new THREE.Sprite(getCandleGlowMaterial());
+  glow.name='Halo luminoso quente da vela '+(index+1);
+  flame.getWorldPosition(glow.position);
+  glow.position.y+=.025;
+  // O halo é uma única sprite translúcida por chama: ilumina visualmente sem
+  // acrescentar dezenas de luzes dinâmicas caras para o Meta Quest 3.
+  glow.scale.set(.56,.76,1);
+  glow.renderOrder=1;
+  scene.add(glow);
+  candleGlowSprites.push({flame,glow,phase:index*.71});
+}
+function updateCandleGlowEffects(delta,time){
+  candleGlowUpdateAccumulator+=delta;
+  if(candleGlowUpdateAccumulator<.08)return;
+  candleGlowUpdateAccumulator=0;
+  for(const item of candleGlowSprites){
+    if(!item.flame.parent)continue;
+    item.flame.getWorldPosition(item.glow.position);
+    item.glow.position.y+=.025;
+  }
+}
+
 function registerAnimatedFlame(object,phase=0,isCore=false){
   if(!object||object.userData.flameAnimationRegistered)return;
   object.userData.flameAnimationRegistered=true;
@@ -294,17 +340,20 @@ function addPascalDeskCandleFlames(roomRoot){
   if(!added)console.warn('Não encontrei corpos de vela reconhecíveis sobre a mesa de Pascal; nenhuma chama foi posicionada por coordenadas arbitrárias.');
 }
 function registerRemainingSceneFlames(){
-  // Varredura final: captura chamas do GLB (inclusive velas de mesas dos dois andares)
-  // ou de móveis procedurais que não tenham sido registrados nos seus criadores.
-  let fallbackPhase=5.7;
+  // Varredura final de todas as chamas do GLB e dos elementos procedurais:
+  // velas de parede, lustres, mesa de Pascal e móveis do andar superior.
+  let fallbackPhase=5.7,glowIndex=0;
+  scene.updateMatrixWorld(true);
   scene.traverse(obj=>{
     if(!obj.visible)return;
     const name=(obj.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     if(/chama|flame|fire|fogo|flamme|fiamma|flammen|flam/.test(name)){
       registerAnimatedFlame(obj,fallbackPhase);
+      if(obj.isMesh||obj.children.length===0)addCandleGlow(obj,glowIndex++);
       fallbackPhase+=1.173;
     }
   });
+  console.info('Halos de luz aplicados a '+glowIndex+' chamas de velas.');
 }
 function addWallEndCandles(){
   // Velas colocadas nas duas extremidades das quatro paredes, em ambos os andares.
@@ -1362,13 +1411,64 @@ function drawDialogueTexture(){
   const ctx=dialogueCanvas.getContext('2d');ctx.clearRect(0,0,dialogueCanvas.width,dialogueCanvas.height);
   ctx.fillStyle='rgba(16,13,11,0.94)';ctx.fillRect(0,0,dialogueCanvas.width,dialogueCanvas.height);
   ctx.strokeStyle='#b88a4a';ctx.lineWidth=7;ctx.strokeRect(8,8,dialogueCanvas.width-16,dialogueCanvas.height-16);
-  ctx.fillStyle='#f2d5a0';ctx.font='bold 35px Georgia,serif';ctx.fillText(dialogueTitle,42,66);
-  ctx.fillStyle='#eee4d3';ctx.font='26px Georgia,serif';wrapText(ctx,dialogueBody,42,122,dialogueCanvas.width-84,37);
+  ctx.fillStyle='#f2d5a0';ctx.font='bold 35px Georgia,serif';
+  ctx.fillText(dialogueTitle.slice(0,dialogueTitleRevealIndex),42,66);
+  ctx.fillStyle='#eee4d3';ctx.font='26px Georgia,serif';
+  wrapText(ctx,dialogueBody.slice(0,dialogueBodyRevealIndex),42,122,dialogueCanvas.width-84,37);
   ctx.fillStyle='#c8a16b';ctx.font='bold 21px system-ui';ctx.fillText(dialoguePrompt,42,dialogueCanvas.height-34);
   dialogueTexture.needsUpdate=true;
 }
 function wrapText(ctx,text,x,y,maxWidth,lineHeight){const paragraphs=text.split('\n');for(const para of paragraphs){const words=para.split(' ');let line='';for(const word of words){const test=line?line+' '+word:word;if(ctx.measureText(test).width>maxWidth&&line){ctx.fillText(line,x,y);line=word;y+=lineHeight}else line=test}if(line){ctx.fillText(line,x,y);y+=lineHeight}}}
 let dialogueCanvas,dialogueTexture,dialoguePanel,dialogueTitle='',dialogueBody='',dialoguePrompt='';
+let dialogueTitleRevealIndex=0,dialogueBodyRevealIndex=0,dialogueTypingAccumulator=0,dialogueSoundCounter=0;
+function playDialogueTextTick(){
+  if(!soundEngine||soundEngine.state!=='running')return;
+  const t=soundEngine.currentTime;
+  const oscillator=soundEngine.createOscillator(),gain=soundEngine.createGain();
+  oscillator.type='sine';
+  oscillator.frequency.setValueAtTime(760+(dialogueSoundCounter%4)*55,t);
+  oscillator.frequency.exponentialRampToValueAtTime(430,t+.026);
+  gain.gain.setValueAtTime(.0001,t);
+  gain.gain.exponentialRampToValueAtTime(.009,t+.002);
+  gain.gain.exponentialRampToValueAtTime(.0001,t+.03);
+  oscillator.connect(gain);gain.connect(soundEngine.destination);
+  oscillator.start(t);oscillator.stop(t+.032);
+}
+function updateDialogueTyping(delta){
+  if(dialogStage<0)return;
+  const titleDone=dialogueTitleRevealIndex>=dialogueTitle.length;
+  const bodyDone=dialogueBodyRevealIndex>=dialogueBody.length;
+  if(titleDone&&bodyDone)return;
+  dialogueTypingAccumulator+=delta;
+  const charInterval=.028;
+  let changed=false;
+  while(dialogueTypingAccumulator>=charInterval&&(!titleDone||dialogueBodyRevealIndex<dialogueBody.length)){
+    dialogueTypingAccumulator-=charInterval;
+    let character='';
+    if(dialogueTitleRevealIndex<dialogueTitle.length){
+      character=dialogueTitle[dialogueTitleRevealIndex++];
+    }else if(dialogueBodyRevealIndex<dialogueBody.length){
+      character=dialogueBody[dialogueBodyRevealIndex++];
+    }
+    if(character&&character!==' '&&character!=='\n'){
+      dialogueSoundCounter++;
+      if(dialogueSoundCounter%3===0)playDialogueTextTick();
+    }
+    changed=true;
+  }
+  if(changed){
+    dialogTitleEl.textContent=dialogueTitle.slice(0,dialogueTitleRevealIndex);
+    dialogBodyEl.textContent=dialogueBody.slice(0,dialogueBodyRevealIndex);
+    drawDialogueTexture();
+  }
+}
+function finishDialogueTyping(){
+  dialogueTitleRevealIndex=dialogueTitle.length;
+  dialogueBodyRevealIndex=dialogueBody.length;
+  dialogueTypingAccumulator=0;
+  dialogTitleEl.textContent=dialogueTitle;dialogBodyEl.textContent=dialogueBody;
+  drawDialogueTexture();
+}
 function makeXRDialogue(){
   dialogueCanvas=document.createElement('canvas');dialogueCanvas.width=1024;dialogueCanvas.height=360;
   dialogueTexture=new THREE.CanvasTexture(dialogueCanvas);dialogueTexture.colorSpace=THREE.SRGBColorSpace;
@@ -1387,13 +1487,23 @@ function updateDialogue(){
   if(dialogStage===0){dialogueTitle=dialogType==='pascalina'?'A PASCALINA':'BLAISE PASCAL';dialogueBody=dialogType==='pascalina'?'Esta máquina foi criada por mim para aliviar meu pai das longas contas dos impostos. Suas rodas numeradas ajudam a somar; quando uma casa passa de 9, a roda seguinte avança — o famoso “vai um”.':'Seja bem-vindo! Sou Blaise Pascal, matemático, escritor, físico, inventor, filósofo e teólogo francês. Explore meu quarto e a galeria de matemática no andar de cima.';dialoguePrompt='GATILHO ESQUERDO: CONTINUAR  ·  DIREITO: FECHAR';}
   else if(dialogStage===1){dialogueTitle='O “VAI UM”';dialogueBody='Quando uma casa da soma passa de 9, acrescentamos 1 à casa imediatamente à esquerda. A Pascalina mecaniza esse transporte entre as rodas numeradas.';dialoguePrompt='GATILHO ESQUERDO: CONTINUAR  ·  DIREITO: FECHAR';}
   else{dialogueTitle='BOA EXPLORAÇÃO';dialogueBody='Observe os livros, a Pascalina e os painéis matemáticos. Suba a escada para visitar a galeria do segundo andar.';dialoguePrompt='GATILHO DIREITO: FECHAR';}
+  dialogueTitleRevealIndex=0;dialogueBodyRevealIndex=0;dialogueTypingAccumulator=0;dialogueSoundCounter=0;
   if(dialoguePanel){dialoguePanel.visible=true;drawDialogueTexture()}
   if(renderer.xr.isPresenting)dialogEl.classList.add('hidden');else dialogEl.classList.remove('hidden');
-  dialogTitleEl.textContent=dialogueTitle;dialogBodyEl.textContent=dialogueBody;
+  dialogTitleEl.textContent='';dialogBodyEl.textContent='';
   dialogNextButton.textContent=dialogStage===2?'Fechar':'Continuar';dialogCancelButton.style.display=dialogStage===2?'none':'inline-block';
 }
-function advanceDialogue(){if(dialogStage<0)return;if(dialogStage>=2){closeDialogue();return}dialogStage++;updateDialogue()}
-function closeDialogue(){dialogStage=-1;if(dialoguePanel)dialoguePanel.visible=false;dialogEl.classList.add('hidden')}
+function advanceDialogue(){
+  if(dialogStage<0)return;
+  if(dialogueTitleRevealIndex<dialogueTitle.length||dialogueBodyRevealIndex<dialogueBody.length){finishDialogueTyping();return}
+  if(dialogStage>=2){closeDialogue();return}
+  dialogStage++;updateDialogue();
+}
+function closeDialogue(){
+  dialogStage=-1;dialogueTypingAccumulator=0;
+  if(dialoguePanel)dialoguePanel.visible=false;
+  dialogEl.classList.add('hidden');
+}
 function interactRay(origin,direction){
   raycaster.set(origin,direction);raycaster.far=8.5;
   const hits=raycaster.intersectObjects(interactables,false).filter(hit=>{
@@ -1551,7 +1661,8 @@ function updateControllerPointers(delta){
 function animate(){
   const delta=Math.min(clock.getDelta(),.05);
   updateCandleLighting(clock.elapsedTime);updateFlameAnimations(delta,clock.elapsedTime);
-  updatePascalFaceAnimation(delta,clock.elapsedTime);updateSmoke(delta,clock.elapsedTime);
+  updateCandleGlowEffects(delta,clock.elapsedTime);updatePascalFaceAnimation(delta,clock.elapsedTime);
+  updateSmoke(delta,clock.elapsedTime);updateDialogueTyping(delta);
   updateDesktopMovement(delta);updateXRMovement(delta);updateVRMusicControlsPose();
   updateControllerPointers(delta);renderer.render(scene,camera);
 }
