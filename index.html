@@ -746,7 +746,8 @@ loader.load('./assets/PASCAL_QUARTO_PARIS_1650.glb',gltf=>{
   alignHistoricWindows(room);
   addPanorama();
   createHistoricWindows(room);
-  addPascalinaUpgrade(room);
+  enhanceMathematicsExhibits(room);
+   addPascalinaUpgrade(room);
   addPascalCharacter();
   addInteractionTargets();
 
@@ -1005,6 +1006,140 @@ function mat(color,roughness=.82,metalness=0){return new THREE.MeshStandardMater
 function box(parent,name,pos,size,material,rotation=null){const mesh=new THREE.Mesh(new THREE.BoxGeometry(size[0],size[1],size[2]),material);mesh.name=name;mesh.position.set(...pos);if(rotation)mesh.rotation.set(...rotation);parent.add(mesh);return mesh}
 function sphere(parent,name,pos,size,material){const mesh=new THREE.Mesh(new THREE.SphereGeometry(1,16,10),material);mesh.name=name;mesh.position.set(...pos);mesh.scale.set(...size);parent.add(mesh);return mesh}
 function capsuleBetween(parent,name,a,b,radius,material){const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),dir=B.clone().sub(A);const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,dir.length(),12),material);mesh.name=name;mesh.position.copy(A).add(B).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());parent.add(mesh);sphere(parent,name+' joint A',a,[radius,radius,radius],material);sphere(parent,name+' joint B',b,[radius,radius,radius],material)}
+
+
+function normExhibitName(v){return (v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[_-]+/g,' ').trim()}
+function exhibitRoots(root,re){
+  const hits=[];root.traverse(o=>{if(re.test(normExhibitName(o.name)))hits.push(o)});
+  return hits.filter(o=>!hits.some(p=>p!==o&&(()=>{let n=o.parent;while(n){if(n===p)return true;n=n.parent}return false})()));
+}
+function exhibitMeshes(root){const a=[];root.traverse(o=>{if(o.isMesh&&o.geometry&&o.visible)a.push(o)});return a}
+function exhibitBounds(meshes){const b=new THREE.Box3();for(const m of meshes){m.updateWorldMatrix(true,false);b.union(new THREE.Box3().setFromObject(m))}return b}
+function exhibitPlane(bounds){
+  const size=bounds.getSize(new THREE.Vector3()).toArray(),normal=[0,1,2].sort((a,b)=>size[a]-size[b])[0],axes=[0,1,2].filter(a=>a!==normal).sort((a,b)=>size[b]-size[a]);
+  const c=bounds.getCenter(new THREE.Vector3()),sign=normal===1?1:(c.getComponent(normal)<0?1:-1);
+  return {size,normal,axes,sign,center:c};
+}
+function planeRotation(p){const e=new THREE.Euler();if(p.normal===0)e.y=p.sign*Math.PI/2;else if(p.normal===1)e.x=-p.sign*Math.PI/2;else if(p.sign<0)e.y=Math.PI;return e}
+function exhibitLabel(text,color,scale){
+  const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
+  x.fillStyle='rgba(34,22,12,.92)';x.beginPath();x.arc(128,128,110,0,Math.PI*2);x.fill();
+  x.strokeStyle='#b98b4e';x.lineWidth=8;x.stroke();x.fillStyle='#f6e4bd';
+  x.font='bold 124px Georgia,serif';x.textAlign='center';x.textBaseline='middle';x.fillText(text,128,133);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,color,transparent:true,depthWrite:false,toneMapped:false}));
+  sp.scale.set(scale,scale,1);return sp;
+}
+function exhibitLight(center,p,intensity,range,offset){
+  const at=center.clone();at.setComponent(p.normal,at.getComponent(p.normal)+p.sign*offset);
+  const light=new THREE.PointLight(0xffc879,intensity,range,2);light.name='Foco quente da exposição matemática';
+  light.position.copy(at);light.castShadow=false;scene.add(light);
+}
+function tintExhibit(meshes,hex){
+  for(const m of meshes){
+    const old=Array.isArray(m.material)?m.material:[m.material];
+    const changed=old.map(v=>{
+      if(!v||!v.clone)return v;const n=v.clone();
+      if(n.emissive){n.emissive.setHex(hex);n.emissiveIntensity=Math.max(n.emissiveIntensity||0,.20)}
+      else if(n.color)n.color.lerp(new THREE.Color(hex),.07);
+      return n;
+    });
+    m.material=Array.isArray(m.material)?changed:changed[0];
+  }
+}
+function addCircleExhibit(root,index){
+  const meshes=exhibitMeshes(root);if(!meshes.length)return false;
+  const b=exhibitBounds(meshes),p=exhibitPlane(b),c=p.center,r=Math.min(p.size[p.axes[0]],p.size[p.axes[1]])*.48;
+  if(!Number.isFinite(r)||r<.025)return false;
+  tintExhibit(meshes,0x754015);
+  const material=new THREE.MeshStandardMaterial({color:0xd3a45c,metalness:.45,roughness:.4,emissive:0x5a2d0b,emissiveIntensity:.24});
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(r,.014,8,72),material);
+  ring.name='Aro reconstruído do círculo '+(index+1);ring.position.copy(c);ring.position.setComponent(p.normal,c.getComponent(p.normal)+p.sign*.02);ring.rotation.copy(planeRotation(p));scene.add(ring);
+  const inner=new THREE.Mesh(new THREE.TorusGeometry(r*.91,.0045,6,64),new THREE.MeshBasicMaterial({color:0xf1d29a,toneMapped:false}));
+  inner.name='Filete interno do círculo';inner.position.copy(ring.position);inner.rotation.copy(ring.rotation);scene.add(inner);
+  const label=exhibitLabel('○',0xffe0ac,.16);label.position.copy(c);label.position.setComponent(p.axes[1],c.getComponent(p.axes[1])+r*.64);label.position.setComponent(p.normal,c.getComponent(p.normal)+p.sign*.04);scene.add(label);
+  exhibitLight(c,p,.68,2.7,.52);return true;
+}
+function hull2D(points){
+  const a=points.sort((x,y)=>x[0]-y[0]||x[1]-y[1]);if(a.length<3)return a;
+  const cross=(o,x,y)=>(x[0]-o[0])*(y[1]-o[1])-(x[1]-o[1])*(y[0]-o[0]),lo=[],hi=[];
+  for(const q of a){while(lo.length>1&&cross(lo[lo.length-2],lo[lo.length-1],q)<=0)lo.pop();lo.push(q)}
+  for(let i=a.length-1;i>=0;i--){const q=a[i];while(hi.length>1&&cross(hi[hi.length-2],hi[hi.length-1],q)<=0)hi.pop();hi.push(q)}
+  lo.pop();hi.pop();return lo.concat(hi);
+}
+function trianglePoints(meshes,p){
+  const pts=[],seen=new Set(),v=new THREE.Vector3();
+  for(const m of meshes){const a=m.geometry.getAttribute('position');if(!a)continue;m.updateWorldMatrix(true,false);const step=Math.max(1,Math.ceil(a.count/900));
+    for(let i=0;i<a.count;i+=step){v.fromBufferAttribute(a,i).applyMatrix4(m.matrixWorld);const q=[v.getComponent(p.axes[0]),v.getComponent(p.axes[1])],key=q.map(n=>Math.round(n*1000)).join('/');
+      if(!seen.has(key)){seen.add(key);pts.push(q)}
+    }
+  }
+  return hull2D(pts);
+}
+function chooseRightCorners(h){
+  let best=null,score=Infinity,areaBest=0;
+  for(let i=0;i<h.length;i++)for(let j=0;j<h.length;j++)for(let k=j+1;k<h.length;k++){
+    if(i===j||i===k)continue;const a=[h[j][0]-h[i][0],h[j][1]-h[i][1]],b=[h[k][0]-h[i][0],h[k][1]-h[i][1]];
+    const la=Math.hypot(...a),lb=Math.hypot(...b);if(la<.02||lb<.02)continue;
+    const sc=Math.abs((a[0]*b[0]+a[1]*b[1])/(la*lb)),ar=Math.abs(a[0]*b[1]-a[1]*b[0]);
+    if(sc<score-.0001||(Math.abs(sc-score)<.0001&&ar>areaBest)){score=sc;areaBest=ar;best=[h[i],h[j],h[k]]}
+  }
+  return best;
+}
+function addRightTriangleExhibit(root,index){
+  const meshes=exhibitMeshes(root);if(!meshes.length)return false;
+  const b=exhibitBounds(meshes),p=exhibitPlane(b),c=p.center;
+  let tri=chooseRightCorners(trianglePoints(meshes,p));
+  if(!tri){const u=p.axes[0],v=p.axes[1];tri=[
+    [c.getComponent(u)-p.size[u]*.48,c.getComponent(v)-p.size[v]*.48],
+    [c.getComponent(u)+p.size[u]*.48,c.getComponent(v)-p.size[v]*.48],
+    [c.getComponent(u)-p.size[u]*.48,c.getComponent(v)+p.size[v]*.48]
+  ]}
+  tintExhibit(meshes,0x6a4319);
+  const world=tri.map(q=>{const v=c.clone();v.setComponent(p.axes[0],q[0]);v.setComponent(p.axes[1],q[1]);v.setComponent(p.normal,c.getComponent(p.normal)+p.sign*.026);return v});
+  const edge=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(world),new THREE.LineBasicMaterial({color:0xe4b96e,toneMapped:false}));
+  edge.name='Contorno reconstruído do triângulo retângulo '+(index+1);scene.add(edge);
+  const base=world[0],u=world[1].clone().sub(base).normalize(),v=world[2].clone().sub(base).normalize();
+  const k=Math.min(base.distanceTo(world[1]),base.distanceTo(world[2]))*.16;
+  const corner=[base.clone().addScaledVector(u,k),base.clone().addScaledVector(u,k).addScaledVector(v,k),base.clone().addScaledVector(v,k)];
+  const square=new THREE.Line(new THREE.BufferGeometry().setFromPoints(corner),new THREE.LineBasicMaterial({color:0xffe6b5,toneMapped:false}));
+  square.name='Marca do ângulo reto de 90 graus';scene.add(square);
+  const tag=exhibitLabel('90°',0xffe7bd,.17);tag.position.copy(base).addScaledVector(u,k*1.7).addScaledVector(v,k*1.7);scene.add(tag);
+  exhibitLight(c,p,.72,2.8,.52);return true;
+}
+function pointCenter(root,meshes){
+  let best=null,bscore=-Infinity;
+  for(const m of meshes){const b=new THREE.Box3().setFromObject(m),d=b.getSize(new THREE.Vector3()).toArray().sort((a,b)=>a-b),ratio=d[2]>0?d[0]/d[2]:0,vol=Math.max(.000001,d[0]*d[1]*d[2]);
+    const score=ratio*2-Math.log10(vol+1e-8)*.04+(m.geometry.type==='SphereGeometry'?.8:0);
+    if(score>bscore){bscore=score;best=m}
+  }
+  return best?new THREE.Box3().setFromObject(best).getCenter(new THREE.Vector3()):exhibitBounds(meshes).getCenter(new THREE.Vector3());
+}
+function addPressurePoint(root,label,color){
+  const meshes=exhibitMeshes(root);if(!meshes.length)return false;
+  const b=exhibitBounds(meshes),p=exhibitPlane(b),c=pointCenter(root,meshes);
+  const marker=new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),new THREE.MeshStandardMaterial({color,metalness:.3,roughness:.35,emissive:color,emissiveIntensity:.42}));
+  marker.name='Marcador iluminado do ponto '+label;marker.position.copy(c);marker.position.setComponent(p.normal,c.getComponent(p.normal)+p.sign*.025);scene.add(marker);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.085,.008,8,32),new THREE.MeshBasicMaterial({color,toneMapped:false}));
+  ring.name='Halo do ponto '+label;ring.position.copy(marker.position);ring.position.setComponent(p.normal,ring.position.getComponent(p.normal)+p.sign*.012);ring.rotation.copy(planeRotation(p));scene.add(ring);
+  const tag=exhibitLabel(label,label==='A'?0xffe0a0:0xffc9a1,.12);tag.position.copy(marker.position);tag.position.y+=.105;scene.add(tag);
+  exhibitLight(c,p,.26,1.35,.28);return true;
+}
+function enhanceMathematicsExhibits(room){
+  room.updateMatrixWorld(true);
+  const circle=exhibitRoots(room,/circulo|circle|cercle|circunfer|kreis|diskus/);
+  const triangle=exhibitRoots(room,/triang|retang|right triangle|triangle rectangle|angle droit/);
+  const pointA=exhibitRoots(room,/(?:pressao|pressure|pression|ponto|point|marker|marcador).{0,12}(?:\ba\b|_a$)|^(?:a|point a|ponto a)$/);
+  const pointB=exhibitRoots(room,/(?:pressao|pressure|pression|ponto|point|marker|marcador).{0,12}(?:\bb\b|_b$)|^(?:b|point b|ponto b)$/);
+  let c=0,t=0,a=0,b=0;
+  circle.forEach((o,i)=>{if(addCircleExhibit(o,i))c++});
+  triangle.forEach((o,i)=>{if(addRightTriangleExhibit(o,i))t++});
+  pointA.forEach(o=>{if(addPressurePoint(o,'A',0xc99a51))a++});
+  pointB.forEach(o=>{if(addPressurePoint(o,'B',0x9c7552))b++});
+  console.info('Exposição matemática:',{circulos:c,triangulosRetangulos:t,pontosA:a,pontosB:b,
+    nomes:{circulo:circle.map(o=>o.name),triangulo:triangle.map(o=>o.name),A:pointA.map(o=>o.name),B:pointB.map(o=>o.name)}});
+  if(!c&&!t&&!a&&!b)console.warn('Nenhuma figura nomeada foi encontrada no GLB; não foram usadas coordenadas presumidas.');
+}
 
 function makePascalinaDialTexture(){
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=512;
